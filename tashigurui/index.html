@@ -147,6 +147,40 @@
   @media (prefers-reduced-motion: reduce) {
     .shake, .newrec, .pop .card { animation: none; }
   }
+
+  /* ===== v2：モード・記録 ===== */
+  .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .mode { padding: 10px 12px; text-align: left; background: var(--panel); border: 3px solid var(--line); line-height: 1.35; touch-action: manipulation; }
+  .mode b { display: block; font-size: 18px; font-weight: 400; }
+  .mode small { display: block; margin-top: 3px; font-size: 11px; color: var(--sub); }
+  .mode.on { border-color: var(--yellow); box-shadow: 0 0 0 2px var(--yellow) inset; }
+  .mode.on b { color: var(--yellow); }
+  .opt-note { margin-top: 8px; font-size: 12px; color: var(--sub); }
+  .stepper { display: flex; align-items: center; gap: 8px; }
+  .stepper button { width: 44px; height: 40px; background: var(--panel); border: 3px solid var(--line); font-size: 20px; touch-action: manipulation; }
+  .stepper output { min-width: 96px; text-align: center; font-size: 22px; color: var(--yellow); }
+  .trials { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .trial { padding: 8px 10px; text-align: left; background: var(--panel); border: 3px solid var(--line); line-height: 1.4; touch-action: manipulation; }
+  .trial b { font-size: 17px; font-weight: 400; }
+  .trial small { display: block; font-size: 11px; color: var(--sub); }
+  .trial.on { border-color: var(--yellow); }
+  .trial.on b { color: var(--yellow); }
+  .rec-link { margin-top: 14px; text-align: center; }
+  .rec-link button { font-size: 13px; color: var(--sub); text-decoration: underline; text-underline-offset: 3px; }
+  .order { margin-top: 4px; font-size: 13px; }
+  .order .t { display: inline-block; min-width: 22px; margin: 0 2px; padding: 0 4px; text-align: center; border: 1px solid var(--line); color: var(--sub); }
+  .order .t.got { border-color: var(--green); color: var(--bg); background: var(--green); }
+  .lv.small { font-size: 20px; }
+
+  #records h1 { margin-top: 18px; font-size: 30px; font-weight: 400; color: var(--yellow); text-shadow: 3px 3px 0 var(--red); }
+  .rtable { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .rtable th, .rtable td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: left; font-weight: 400; }
+  .rtable th { color: var(--sub); font-size: 12px; }
+  .rtable td.num { text-align: right; color: var(--yellow); }
+  .face-s { color: var(--yellow); }
+  .danger { margin-top: 24px; text-align: center; }
+  .danger button { font-size: 12px; color: var(--sub); border: 1px solid var(--line); padding: 4px 10px; }
+  .danger button.sure { color: var(--red); border-color: var(--red); }
 </style>
 </head>
 <body>
@@ -168,27 +202,26 @@
     <div class="ex" aria-label="例：8と7なら、足して15、答えは5">
       <span class="card" data-ex="A8"></span>＋<span class="card" data-ex="D7"></span>＝ 15 → <span class="ans">5</span>
     </div>
-    <div class="muted">レベルが上がると、漢数字・ローマ数字・サイコロ・多角形まで混ざってくる。5問正解でレベルアップ。ミスか時間切れでライフが1つ減り、3つ失うと終わり。</div>
+    <div class="muted">レベルが上がると、漢数字・ローマ数字・サイコロ・多角形まで混ざってくる。ミスか時間切れでライフが減り、なくなると終わり。</div>
   </div>
 
   <div class="sec">
-    <h2>狂い度（制限時間）</h2>
-    <div class="speeds" id="speeds"></div>
+    <h2>モード</h2>
+    <div class="modes" id="modes"></div>
   </div>
 
-  <div class="sec" id="startSec">
-    <h2>スタートするレベル</h2>
-    <div class="starts" id="starts"></div>
-    <p class="muted" style="margin-top:6px">16レベルを越えるごとに、次からその先のレベルで始められます。</p>
-  </div>
+  <div id="opts"></div>
 
   <div class="go-row">
     <button class="btn go" type="button" id="goBtn">はじめる</button>
     <p class="muted"><kbd>Enter</kbd> でもはじまる</p>
   </div>
 
+  <div class="rec-link"><button type="button" id="recBtn">記録と、最近の脳のコンディションを見る</button></div>
+
   <p class="credit">
     遊び方のルールは、2004年のフリーソフト「ADD-MANIA」（うにうに 作）に着想を得ています。<br>
+    このゲームを生み出した作者に、敬意と感謝を込めて。<br>
     絵・音・プログラムは、すべてこのサイトのために新しく作りました。記録はこのブラウザの中にだけ保存されます。
   </p>
 </main>
@@ -196,7 +229,7 @@
 <!-- ============ ゲーム ============ -->
 <main class="scr hide" id="game">
   <div class="hud">
-    <div class="lv">LEVEL <span id="lv">1</span><small id="left">あと5問</small></div>
+    <div class="lv" id="lvBox"><span id="lv">LEVEL 1</span><small id="left">あと5問</small></div>
     <div class="hud-r">
       <div class="life" id="life" aria-label="ライフ"></div>
       <button class="icon-btn" type="button" id="pauseBtn" aria-label="一時停止">II</button>
@@ -204,6 +237,7 @@
   </div>
   <div class="hud2">
     <div class="combo" id="comboBox"><b id="combo">0</b> COMBO</div>
+    <div class="order hide" id="order"></div>
     <div class="types" id="types" aria-label="出てくるパネルの種類"></div>
   </div>
 
@@ -221,8 +255,8 @@
 <!-- ============ 結果 ============ -->
 <main class="scr hide" id="result">
   <div class="res-head">
-    <h2>GAME OVER</h2>
-    <div class="res-lv">LEVEL <b id="rLv">1</b></div>
+    <h2 id="rHead">GAME OVER</h2>
+    <div class="res-lv"><span id="rLabel">LEVEL</span> <b id="rLv">1</b></div>
     <div class="muted" id="rSpeed"></div>
     <div id="rNew"></div>
   </div>
@@ -232,7 +266,7 @@
     <div class="stat"><small>最大コンボ</small><b id="rCombo">0</b></div>
     <div class="stat"><small>1問あたり（正解時）</small><b id="rTime">-</b></div>
   </div>
-  <div class="box cond">
+  <div class="box cond" id="condBox">
     <div class="muted">今日の脳のコンディション</div>
     <div class="face" id="cFace"></div>
     <p id="cText"></p>
@@ -243,6 +277,20 @@
     <button class="btn" type="button" id="toTitleBtn">タイトルへ</button>
   </div>
   <p class="muted" style="text-align:center;margin-top:10px"><kbd>Enter</kbd> もう一度　<kbd>Esc</kbd> タイトルへ</p>
+</main>
+
+<!-- ============ 記録 ============ -->
+<main class="scr hide" id="records">
+  <button class="back" type="button" data-to-title>← タイトルへ</button>
+  <h1>記録</h1>
+  <div class="sec"><h2>サバイバル（最高到達レベル）</h2><table class="rtable" id="recSurvival"></table></div>
+  <div class="sec"><h2>ミッション</h2><div class="box" id="recMission"></div></div>
+  <div class="sec"><h2>トライアル（最大連続正解）</h2><table class="rtable" id="recTrial"></table></div>
+  <div class="sec">
+    <h2>最近の脳のコンディション（サバイバル）</h2>
+    <table class="rtable" id="recCond"></table>
+  </div>
+  <div class="danger"><button type="button" id="wipeBtn">すべての記録を消す</button></div>
 </main>
 
 <!-- ============ 一時停止 ============ -->
@@ -262,9 +310,11 @@
 "use strict";
 /* =========================================================
    足し狂い
-   - パネルの数を全部足した一の位を答える
-   - 5問正解でレベルアップ。16レベルごとにパネルが1枚増える（最大7枚）
-   - ライフ3。不正解・時間切れで1つ減る
+   パネルの数を全部足した一の位を答える。モードは4つ。
+   - サバイバル：5問正解でレベルアップ。16レベルごとにパネルが1枚増える（最大7枚）。ライフ3
+   - ミッション：全30面。面ごとに指令（連続正解／決まった答えを獲得）とスピードが変わる。ライフ1
+   - 練習：サバイバルで到達したレベルを、ライフ無限で続ける
+   - トライアル：4つの固定設定。1ミスで終わり。連続正解の数を競う
    ========================================================= */
 
 // ---------- 設定 ----------
@@ -276,23 +326,75 @@ const SPEEDS = [
 ];
 const TYPES = ["A", "C", "R", "D", "P"]; // アラビア数字・漢数字・ローマ数字・サイコロ・多角形
 const TYPE_LABEL = { A: "1", C: "壱", R: "IV", D: "⚄", P: "△" };
+const TYPE_NAME = { A: "数字", C: "漢数字", R: "ローマ数字", D: "サイコロ", P: "多角形" };
+const typeNames = (list) => (list.length === 5 ? "全種類" : list.map((x) => TYPE_NAME[x]).join("＋"));
 // 16レベルを1まとまりとして、出てくるパネルの種類が巡る
 const CYCLE = ["A", "C", "R", "D", "P", "ACR", "ACD", "ACP", "ARD", "ARP", "ADP", "CRD", "CRP", "CDP", "RDP", "ACRDP"];
 const PER_LEVEL = 5;
-const LIVES = 3;
 
+const MODES = {
+  survival: { name: "サバイバル", desc: "どこまでレベルを上げられるか。ライフ3" },
+  mission:  { name: "ミッション", desc: "指令をこなして全30面を制覇。ライフ1" },
+  practice: { name: "練習",       desc: "好きなレベルで、ライフ無限" },
+  trial:    { name: "トライアル", desc: "1ミスで終わり。連続正解に挑む" },
+};
+
+// ミッション：t=パネルの種類、n=枚数、s=狂い度、go=指令（streak=連続正解数／get=獲得する答え）
+const MISSIONS = [
+  { t: "A", n: 2, s: 1, go: { streak: 5 } },
+  { t: "C", n: 2, s: 1, go: { get: [5] } },
+  { t: "R", n: 2, s: 1, go: { streak: 6 } },
+  { t: "D", n: 2, s: 1, go: { get: [2, 8] } },
+  { t: "P", n: 2, s: 1, go: { streak: 8 } },
+  { t: "AC", n: 2, s: 2, go: { streak: 8 } },
+  { t: "RD", n: 2, s: 1, go: { get: [1, 4, 7] } },
+  { t: "CP", n: 2, s: 2, go: { streak: 10 } },
+  { t: "ARD", n: 2, s: 2, go: { get: [0, 9] } },
+  { t: "ACRDP", n: 2, s: 2, go: { streak: 12 } },
+  { t: "A", n: 3, s: 1, go: { streak: 8 } },
+  { t: "AC", n: 3, s: 1, go: { get: [3, 6, 9] } },
+  { t: "DP", n: 3, s: 1, go: { streak: 10 } },
+  { t: "CR", n: 3, s: 2, go: { get: [2, 4, 6, 8] } },
+  { t: "ACRDP", n: 3, s: 1, go: { streak: 15 } },
+  { t: "AR", n: 4, s: 1, go: { streak: 10 } },
+  { t: "CD", n: 3, s: 2, go: { get: [1, 5] } },
+  { t: "ACP", n: 4, s: 1, go: { streak: 12 } },
+  { t: "RDP", n: 3, s: 2, go: { get: [0, 5, 7] } },
+  { t: "ACRDP", n: 4, s: 1, go: { streak: 15 } },
+  { t: "A", n: 4, s: 3, go: { streak: 10 } },
+  { t: "ACR", n: 5, s: 1, go: { get: [1, 3, 5, 7, 9] } },
+  { t: "DP", n: 4, s: 2, go: { streak: 15 } },
+  { t: "ACRDP", n: 4, s: 2, go: { get: [0, 2, 4, 6, 8] } },
+  { t: "ACRDP", n: 5, s: 1, go: { streak: 20 } },
+  { t: "A", n: 5, s: 3, go: { streak: 12 } },
+  { t: "CR", n: 5, s: 2, go: { get: [4, 6, 8] } },
+  { t: "DP", n: 5, s: 2, go: { streak: 15 } },
+  { t: "ACRDP", n: 5, s: 2, go: { get: [0, 1, 2, 3] } },
+  { t: "ACRDP", n: 6, s: 2, go: { streak: 20 } },
+];
+const goText = (go) => (go.streak ? `連続${go.streak}問正解せよ` : `${go.get.join("・")}を獲得せよ`);
+
+// トライアル：途中で設定が変わらない。自分の限界を測る
+const TRIALS = [
+  { key: "A", name: "入門", t: "A", n: 2, s: 2 },
+  { key: "B", name: "混線", t: "ACR", n: 3, s: 1 },
+  { key: "C", name: "幻覚", t: "DP", n: 4, s: 1 },
+  { key: "D", name: "発狂", t: "ACRDP", n: 5, s: 2 },
+];
+
+const baseLimit = (n, s) => SPEEDS[s].base * (1 + 0.3 * (n - 2)) * 1000;
 const panelCount = (lv) => Math.min(2 + Math.floor((lv - 1) / 16), 7);
 const typesOf = (lv) => (lv <= 96 ? CYCLE[(lv - 1) % 16] : "ACRDP").split("");
 function timeLimit(lv, speed) {
-  const n = panelCount(lv);
-  let t = SPEEDS[speed].base * (1 + 0.3 * (n - 2));
+  let t = baseLimit(panelCount(lv), speed);
   if (lv > 96) t *= Math.max(0.6, 1 - 0.01 * (lv - 96)); // レベル97からは、じわじわ縮む
-  return t * 1000;
+  return t;
 }
 
 // ---------- 記録（このブラウザの中だけ） ----------
 const KEY = "tashigurui:v1";
-let save = { sound: true, speed: 1, best: [0, 0, 0, 0], history: [] };
+const DEFAULT = () => ({ sound: true, mode: "survival", speed: 1, best: [0, 0, 0, 0], history: [], missionMax: 1, trial: 0, trialBest: [0, 0, 0, 0], practiceLv: 1, missionAll: false });
+let save = DEFAULT();
 try { Object.assign(save, JSON.parse(localStorage.getItem(KEY) || "{}")); } catch {}
 const store = () => { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch {} };
 
@@ -431,13 +533,17 @@ const Sound = (() => {
   };
 })();
 
+
 // ---------- 画面の部品 ----------
 const $ = (id) => document.getElementById(id);
-const screens = { title: $("title"), game: $("game"), result: $("result") };
+const screens = { title: $("title"), game: $("game"), result: $("result"), records: $("records") };
+const current = () => Object.keys(screens).find((k) => !screens[k].classList.contains("hide"));
 function show(name) {
   for (const [k, el] of Object.entries(screens)) el.classList.toggle("hide", k !== name);
   scrollTo(0, 0);
 }
+const toTitle = () => { drawTitle(); show("title"); };
+document.querySelectorAll("[data-to-title]").forEach((b) => (b.onclick = toTitle));
 
 // 例のパネル
 document.querySelectorAll("[data-ex]").forEach((el) => { el.innerHTML = panelSvg(el.dataset.ex[0], Number(el.dataset.ex.slice(1))); });
@@ -451,20 +557,69 @@ document.querySelectorAll("[data-snd]").forEach((b) => (b.onclick = () => {
 drawSound();
 
 // ---------- タイトル ----------
-let startLv = 1;
+let startLv = 1, startMission = 1;
+
+function speedButtons() {
+  return `<div class="speeds" id="speeds">${SPEEDS.map((s, i) => `<button class="speed${i === save.speed ? " on" : ""}" type="button" data-i="${i}">
+      <b>${s.name}</b><small>${s.note}</small><small>最高 Lv${save.best[i] || "-"}</small></button>`).join("")}</div>`;
+}
+function bindSpeeds() {
+  $("opts").querySelectorAll(".speed").forEach((b) => (b.onclick = () => { save.speed = Number(b.dataset.i); store(); startLv = 1; drawTitle(); }));
+}
+
 function drawTitle() {
-  $("speeds").innerHTML = SPEEDS.map((s, i) => `<button class="speed${i === save.speed ? " on" : ""}" type="button" data-i="${i}">
-      <b>${s.name}</b><small>${s.note}</small><small>最高 Lv${save.best[i] || "-"}</small></button>`).join("");
-  $("speeds").querySelectorAll(".speed").forEach((b) => (b.onclick = () => { save.speed = Number(b.dataset.i); store(); startLv = 1; drawTitle(); }));
+  $("modes").innerHTML = Object.entries(MODES).map(([k, m]) => `<button class="mode${k === save.mode ? " on" : ""}" type="button" data-m="${k}"><b>${m.name}</b><small>${m.desc}</small></button>`).join("");
+  $("modes").querySelectorAll(".mode").forEach((b) => (b.onclick = () => { save.mode = b.dataset.m; store(); drawTitle(); }));
+
+  const o = $("opts");
   const best = save.best[save.speed] || 0;
-  const opts = [1];
-  for (let k = 1; 16 * k + 1 <= best; k++) opts.push(16 * k + 1);
-  if (!opts.includes(startLv)) startLv = 1;
-  $("startSec").classList.toggle("hide", opts.length < 2);
-  $("starts").innerHTML = opts.map((l) => `<button class="start${l === startLv ? " on" : ""}" type="button" data-l="${l}">Lv ${l}</button>`).join("");
-  $("starts").querySelectorAll(".start").forEach((b) => (b.onclick = () => { startLv = Number(b.dataset.l); drawTitle(); }));
+  if (save.mode === "survival") {
+    const starts = [1];
+    for (let k = 1; 16 * k + 1 <= best; k++) starts.push(16 * k + 1);
+    if (!starts.includes(startLv)) startLv = 1;
+    o.innerHTML = `<div class="sec"><h2>狂い度（制限時間）</h2>${speedButtons()}</div>
+      ${starts.length > 1 ? `<div class="sec"><h2>スタートするレベル</h2><div class="starts">${starts.map((l) => `<button class="start${l === startLv ? " on" : ""}" type="button" data-l="${l}">Lv ${l}</button>`).join("")}</div></div>` : ""}
+      <p class="opt-note">5問正解でレベルアップ。16レベルを越えるごとに、次からその先のレベルで始められます。</p>`;
+    bindSpeeds();
+    o.querySelectorAll(".start").forEach((b) => (b.onclick = () => { startLv = Number(b.dataset.l); drawTitle(); }));
+  } else if (save.mode === "practice") {
+    const max = Math.max(1, best);
+    save.practiceLv = Math.min(Math.max(1, save.practiceLv), max);
+    o.innerHTML = `<div class="sec"><h2>狂い度（制限時間）</h2>${speedButtons()}</div>
+      <div class="sec"><h2>練習するレベル</h2>
+        <div class="stepper"><button type="button" data-d="-16" aria-label="16下げる">«</button><button type="button" data-d="-1" aria-label="1下げる">−</button>
+        <output>Lv ${save.practiceLv}</output>
+        <button type="button" data-d="1" aria-label="1上げる">＋</button><button type="button" data-d="16" aria-label="16上げる">»</button></div>
+        <p class="opt-note">${describeLevel(save.practiceLv)}<br>この狂い度のサバイバルで到達した Lv${max} まで選べます。レベルは上がらず、ライフは無限。やめるときは一時停止から。</p>
+      </div>`;
+    bindSpeeds();
+    o.querySelectorAll(".stepper button").forEach((b) => (b.onclick = () => {
+      save.practiceLv = Math.min(max, Math.max(1, save.practiceLv + Number(b.dataset.d))); store(); drawTitle();
+    }));
+  } else if (save.mode === "mission") {
+    const reach = Math.min(save.missionMax, MISSIONS.length);
+    const starts = [];
+    for (let m = 1; m <= reach; m += 5) starts.push(m);
+    if (!starts.includes(startMission)) startMission = 1;
+    o.innerHTML = `<div class="sec"><h2>スタートする面</h2>
+        <div class="starts">${starts.map((m) => `<button class="start${m === startMission ? " on" : ""}" type="button" data-m="${m}">${m}面</button>`).join("")}</div>
+        <p class="opt-note">いまの到達：${reach}面 / ${MISSIONS.length}面。5面ごとに、次からその面で始められます。<br>面ごとにパネル・枚数・スピードと「指令」が変わります。「連続○問」の指令では、あと何問かは表示されません。数えながら、焦らずに。</p>
+      </div>`;
+    o.querySelectorAll(".start").forEach((b) => (b.onclick = () => { startMission = Number(b.dataset.m); drawTitle(); }));
+  } else {
+    o.innerHTML = `<div class="sec"><h2>設定を選ぶ</h2>
+        <div class="trials">${TRIALS.map((t, i) => `<button class="trial${i === save.trial ? " on" : ""}" type="button" data-i="${i}">
+          <b>${t.key}：${t.name}</b><small>${t.n}枚・${typeNames(t.t.split(""))}</small><small>${SPEEDS[t.s].name}・最高 ${save.trialBest[i] || 0}連続</small></button>`).join("")}</div>
+        <p class="opt-note">設定は最後まで変わりません。1回でもミスか時間切れで終わり。何問続けて正解できるか。</p>
+      </div>`;
+    o.querySelectorAll(".trial").forEach((b) => (b.onclick = () => { save.trial = Number(b.dataset.i); store(); drawTitle(); }));
+  }
+}
+function describeLevel(lv) {
+  return `パネル${panelCount(lv)}枚・${typeNames(typesOf(lv))}`;
 }
 $("goBtn").onclick = () => startGame();
+$("recBtn").onclick = () => { drawRecords(); show("records"); };
 
 // ---------- 数字ボタン ----------
 $("pad").innerHTML = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map((n) => `<button class="key${n === 0 ? " zero" : ""}" type="button" data-n="${n}">${n}</button>`).join("");
@@ -480,17 +635,38 @@ function flashKey(n) {
 // ---------- ゲーム本体 ----------
 const G = {
   state: "idle", // idle | count | ask | wait | paused | over
-  lv: 1, left: PER_LEVEL, life: LIVES, combo: 0, maxCombo: 0, correct: 0, total: 0, okMs: 0,
-  nums: [], answer: 0, limit: 0, t0: 0, remain: 0, raf: 0, timers: [], speed: 1, resume: "",
+  mode: "survival", speed: 1, start: 1,
+  lv: 1, left: PER_LEVEL, mission: 1, trial: 0, streak: 0, got: new Set(),
+  life: 3, maxLife: 3, combo: 0, maxCombo: 0, correct: 0, total: 0, okMs: 0, cleared: false,
+  nums: [], answer: 0, limit: 0, t0: 0, remain: 0, raf: 0, timers: [], resume: "",
 };
 const later = (fn, ms) => { const id = setTimeout(fn, ms); G.timers.push(id); return id; };
 const clearLater = () => { G.timers.forEach(clearTimeout); G.timers = []; };
-const tempoOf = (lv) => 148 + 7 * (panelCount(lv) - 2) + Math.min(SPEEDS.length - 1, G.speed) * 4;
+
+// いまの問題の設定（枚数・種類・制限時間）
+function setting() {
+  if (G.mode === "mission") { const m = MISSIONS[G.mission - 1]; return { n: m.n, types: m.t.split(""), ms: baseLimit(m.n, m.s) }; }
+  if (G.mode === "trial") { const t = TRIALS[G.trial]; return { n: t.n, types: t.t.split(""), ms: baseLimit(t.n, t.s) }; }
+  return { n: panelCount(G.lv), types: typesOf(G.lv), ms: timeLimit(G.lv, G.speed) };
+}
+const tempo = () => {
+  const s = setting(), sp = G.mode === "mission" ? MISSIONS[G.mission - 1].s : G.mode === "trial" ? TRIALS[G.trial].s : G.speed;
+  return 148 + 7 * (s.n - 2) + sp * 4;
+};
 
 function startGame() {
   Sound.init();
   clearLater(); cancelAnimationFrame(G.raf);
-  Object.assign(G, { lv: startLv, left: PER_LEVEL, life: LIVES, combo: 0, maxCombo: 0, correct: 0, total: 0, okMs: 0, speed: save.speed });
+  const mode = save.mode;
+  Object.assign(G, {
+    mode, speed: save.speed, combo: 0, maxCombo: 0, correct: 0, total: 0, okMs: 0, streak: 0, got: new Set(), cleared: false,
+    lv: mode === "practice" ? save.practiceLv : startLv, left: PER_LEVEL,
+    mission: startMission, trial: save.trial,
+    maxLife: mode === "survival" ? 3 : mode === "practice" ? Infinity : 1,
+  });
+  G.life = G.maxLife;
+  G.prevMax = save.missionMax;
+  G.start = mode === "mission" ? G.mission : G.lv;
   show("game");
   drawHud();
   $("panels").innerHTML = "";
@@ -498,16 +674,19 @@ function startGame() {
   setBar(1);
   // カウントダウン中のキー入力は答えとして扱わない
   G.state = "count";
-  const steps = ["3", "2", "1", "GO!"];
-  steps.forEach((s, i) => later(() => {
-    banner(s === "GO!" ? `GO!<small>${SPEEDS[G.speed].name}・Lv${G.lv}から</small>` : s);
+  const sub = mode === "survival" ? `${SPEEDS[G.speed].name}・Lv${G.lv}から`
+    : mode === "practice" ? `練習・Lv${G.lv}（${SPEEDS[G.speed].name}）`
+    : mode === "mission" ? `${G.mission}面：${goText(MISSIONS[G.mission - 1].go)}`
+    : `トライアル${TRIALS[G.trial].key}：ノーミスで続けろ`;
+  ["3", "2", "1", "GO!"].forEach((s, i) => later(() => {
+    banner(s === "GO!" ? `GO!<small>${sub}</small>` : s + (i === 0 ? `<small>${sub}</small>` : ""));
     Sound.play(s === "GO!" ? "go" : "tick");
   }, i * 600));
-  later(() => { banner(null); Sound.bgmStart(tempoOf(G.lv)); ask(); }, steps.length * 600);
+  later(() => { banner(null); Sound.bgmStart(tempo()); ask(); }, 4 * 600);
 }
 
 function ask() {
-  const n = panelCount(G.lv), types = typesOf(G.lv);
+  const { n, types, ms } = setting();
   G.nums = Array.from({ length: n }, () => ({ v: 1 + Math.floor(Math.random() * 10), t: types[Math.floor(Math.random() * types.length)] }));
   G.answer = G.nums.reduce((a, b) => a + b.v, 0) % 10;
   const p = $("panels");
@@ -515,7 +694,7 @@ function ask() {
   p.innerHTML = G.nums.map((x) => `<div class="card">${panelSvg(x.t, x.v)}</div>`).join("");
   sizePanels();
   $("stage").className = "stage";
-  G.limit = timeLimit(G.lv, G.speed); G.remain = G.limit;
+  G.limit = ms; G.remain = ms;
   G.t0 = performance.now(); G.state = "ask";
   tick();
 }
@@ -550,15 +729,26 @@ function judge(n) {
   G.total++;
   const msg = $("msg"), stage = $("stage");
   if (n === G.answer) {
-    G.correct++; G.combo++; G.maxCombo = Math.max(G.maxCombo, G.combo); G.okMs += used; G.left--;
-    msg.textContent = G.combo >= 10 ? `せいかい！ ${G.combo}連続` : "せいかい！";
+    G.correct++; G.combo++; G.maxCombo = Math.max(G.maxCombo, G.combo); G.okMs += used;
     msg.className = "msg ok"; stage.className = "stage ok";
     Sound.play("ok");
+    let next = ask, wait = 240, text = G.combo >= 10 && G.mode !== "mission" ? `せいかい！ ${G.combo}連続` : "せいかい！";
+    if (G.mode === "survival") {
+      G.left--;
+      if (G.left === 0) { next = levelUp; wait = 220; }
+    } else if (G.mode === "mission") {
+      const go = MISSIONS[G.mission - 1].go;
+      G.streak++;
+      if (go.get && go.get.includes(G.answer) && !G.got.has(G.answer)) { G.got.add(G.answer); text = `${G.answer} を獲得！`; }
+      const done = go.streak ? G.streak >= go.streak : go.get.every((d) => G.got.has(d));
+      if (done) { next = missionClear; wait = 260; }
+    }
+    msg.textContent = text;
     drawHud();
-    if (G.left === 0) later(levelUp, 220);
-    else later(ask, 240);
+    later(next, wait);
   } else {
-    G.combo = 0; G.life--;
+    G.combo = 0; G.streak = 0;
+    if (G.mode !== "practice") G.life--;
     msg.textContent = n === null ? `時間切れ！ 答えは ${G.answer}` : `ちがう！ 答えは ${G.answer}`;
     msg.className = "msg ng"; stage.className = "stage ng";
     Sound.play(n === null ? "timeout" : "ng");
@@ -573,21 +763,59 @@ function levelUp() {
   G.lv++; G.left = PER_LEVEL;
   drawHud();
   Sound.play("up");
-  Sound.bgmTempo(tempoOf(G.lv));
+  Sound.bgmTempo(tempo());
   const n = panelCount(G.lv);
   const note = n > before ? `パネルが${n}枚に！` : typesOf(G.lv).length === 5 ? "全種類まざってくる" : "";
   banner(`LEVEL ${G.lv}${note ? `<small>${note}</small>` : ""}`);
   later(() => { banner(null); ask(); }, n > before ? 1300 : 750);
 }
 
+function missionClear() {
+  Sound.play("up");
+  if (G.mission >= MISSIONS.length) {
+    G.cleared = true;
+    save.missionMax = MISSIONS.length; store();
+    banner(`ALL CLEAR!!<small>全${MISSIONS.length}面、制覇</small>`);
+    later(gameOver, 1800);
+    return;
+  }
+  G.mission++; G.streak = 0; G.got = new Set();
+  if (G.mission > save.missionMax) { save.missionMax = G.mission; store(); }
+  drawHud();
+  Sound.bgmTempo(tempo());
+  const m = MISSIONS[G.mission - 1];
+  banner(`MISSION CLEAR!<small>次は ${G.mission}面：${goText(m.go)}<br>パネル${m.n}枚・${SPEEDS[m.s].name}</small>`);
+  later(() => { banner(null); ask(); }, 1800);
+}
+
 function drawHud() {
-  $("lv").textContent = G.lv;
-  $("left").textContent = `あと${G.left}問`;
-  $("life").innerHTML = "♥".repeat(Math.max(0, G.life)) + `<i>${"♥".repeat(Math.max(0, LIVES - G.life))}</i>`;
+  const lv = $("lv"), left = $("left"), order = $("order"), comboBox = $("comboBox");
+  let types;
+  $("lvBox").classList.toggle("small", G.mode !== "survival");
+  order.classList.add("hide");
+  comboBox.classList.remove("hide");
+  if (G.mode === "survival") {
+    lv.textContent = `LEVEL ${G.lv}`; left.textContent = `あと${G.left}問`;
+  } else if (G.mode === "practice") {
+    lv.textContent = `練習 Lv${G.lv}`; left.textContent = "ライフ無限";
+  } else if (G.mode === "mission") {
+    const go = MISSIONS[G.mission - 1].go;
+    lv.textContent = `${G.mission}面`; left.textContent = goText(go);
+    // 連続正解の指令では、何問続いているかを見せない（数える緊張感のため）
+    comboBox.classList.add("hide");
+    if (go.get) {
+      order.classList.remove("hide");
+      order.innerHTML = "獲得 " + go.get.map((d) => `<span class="t${G.got.has(d) ? " got" : ""}">${d}</span>`).join("");
+    }
+  } else {
+    const t = TRIALS[G.trial];
+    lv.textContent = `トライアル${t.key}`; left.textContent = t.name;
+  }
+  types = setting().types;
+  $("life").innerHTML = G.maxLife === Infinity ? "∞" : "♥".repeat(Math.max(0, G.life)) + `<i>${"♥".repeat(Math.max(0, G.maxLife - G.life))}</i>`;
   $("combo").textContent = G.combo;
-  $("comboBox").classList.toggle("hot", G.combo >= 10);
-  const on = typesOf(G.lv);
-  $("types").innerHTML = TYPES.map((t) => `<span class="${on.includes(t) ? "on" : ""}">${TYPE_LABEL[t]}</span>`).join("");
+  comboBox.classList.toggle("hot", G.combo >= 10);
+  $("types").innerHTML = TYPES.map((t) => `<span class="${types.includes(t) ? "on" : ""}">${TYPE_LABEL[t]}</span>`).join("");
 }
 
 function banner(html) {
@@ -608,7 +836,7 @@ function sizePanels() {
   p.style.setProperty("--s", s + "px");
   p.style.maxWidth = (s * cols + 10 * (cols - 1)) + "px";
 }
-addEventListener("resize", () => { if (!screens.game.classList.contains("hide")) sizePanels(); });
+addEventListener("resize", () => { if (current() === "game") sizePanels(); });
 
 // ---------- 一時停止 ----------
 function pause() {
@@ -619,18 +847,24 @@ function pause() {
   clearLater(); cancelAnimationFrame(G.raf);
   G.state = "paused";
   Sound.bgmStop();
+  $("quitBtn").textContent = G.mode === "practice" ? "練習をおわる" : "やめる（ここで終了）";
   $("pause").classList.remove("hide");
 }
 function resume() {
   if (G.state !== "paused") return;
   $("pause").classList.add("hide");
   Sound.init();
-  Sound.bgmStart(tempoOf(G.lv));
+  Sound.bgmStart(tempo());
   banner(null);
-  if (G.life <= 0) { gameOver(); return; }
+  if (G.life <= 0 || G.cleared) { gameOver(); return; }
   if (G.resume === "ask") { G.t0 = performance.now(); G.state = "ask"; tick(); } // 同じ問題の続きから
-  else if (G.left === 0) levelUp(); // 5問目に正解した直後に止めたとき
+  else if (G.mode === "survival" && G.left === 0) levelUp(); // 5問目に正解した直後に止めたとき
+  else if (G.mode === "mission" && G.resume === "wait" && missionDone()) missionClear();
   else ask();
+}
+function missionDone() {
+  const go = MISSIONS[G.mission - 1].go;
+  return go.streak ? G.streak >= go.streak : go.get.every((d) => G.got.has(d));
 }
 $("pauseBtn").onclick = pause;
 $("resumeBtn").onclick = resume;
@@ -642,29 +876,54 @@ function gameOver() {
   clearLater(); cancelAnimationFrame(G.raf);
   G.state = "over";
   Sound.bgmStop();
-  Sound.play("over");
-  const sp = G.speed;
-  const isNew = G.lv > (save.best[sp] || 0);
-  if (isNew) save.best[sp] = G.lv;
+  Sound.play(G.cleared ? "up" : "over");
   const avg = G.correct ? G.okMs / G.correct : 0;
-  const prev = save.history.filter((h) => h.speed === sp && h.correct >= 1).slice(-10);
-  const rec = { t: Date.now(), speed: sp, start: startLv, lv: G.lv, correct: G.correct, total: G.total, maxCombo: G.maxCombo, avgMs: Math.round(avg) };
-  save.history.push(rec);
-  save.history = save.history.slice(-200);
+  let head = G.cleared ? "ALL CLEAR!!" : G.mode === "practice" ? "練習おわり" : "GAME OVER";
+  let label, big, sub, isNew = false;
+
+  if (G.mode === "survival") {
+    label = "LEVEL"; big = G.lv;
+    sub = `狂い度：${SPEEDS[G.speed].name}　（Lv${G.start}からスタート）`;
+    isNew = G.lv > (save.best[G.speed] || 0);
+    if (isNew) save.best[G.speed] = G.lv;
+  } else if (G.mode === "practice") {
+    label = "練習 Lv"; big = G.lv;
+    sub = `狂い度：${SPEEDS[G.speed].name}　${describeLevel(G.lv)}`;
+  } else if (G.mode === "mission") {
+    label = G.cleared ? "全" : ""; big = G.cleared ? `${MISSIONS.length}面` : `${G.mission}面`;
+    sub = G.cleared ? "すべての指令をこなした。おめでとう！" : `${goText(MISSIONS[G.mission - 1].go)}　で力尽きた（${G.start}面からスタート）`;
+    isNew = (G.cleared ? MISSIONS.length + 1 : G.mission) > G.prevMax;
+    if (G.cleared) save.missionAll = true;
+  } else {
+    const t = TRIALS[G.trial];
+    label = "連続"; big = G.maxCombo;
+    sub = `トライアル${t.key}「${t.name}」　${t.n}枚・${SPEEDS[t.s].name}`;
+    isNew = G.maxCombo > (save.trialBest[G.trial] || 0);
+    if (isNew) save.trialBest[G.trial] = G.maxCombo;
+  }
+
+  const rec = { t: Date.now(), mode: G.mode, speed: G.speed, start: G.start, lv: G.mode === "mission" ? G.mission : G.lv, correct: G.correct, total: G.total, maxCombo: G.maxCombo, avgMs: Math.round(avg) };
+  const isSurvival = G.mode === "survival";
+  const prev = isSurvival ? save.history.filter((h) => (h.mode || "survival") === "survival" && h.speed === G.speed && h.correct >= 1).slice(-10) : [];
+  if (isSurvival) rec.face = drawCondition(rec, prev);
+  $("condBox").classList.toggle("hide", !isSurvival);
+  if (G.total > 0) { save.history.push(rec); save.history = save.history.slice(-300); }
   store();
 
-  $("rLv").textContent = G.lv;
-  $("rSpeed").textContent = `狂い度：${SPEEDS[sp].name}　（Lv${startLv}からスタート）`;
+  $("rHead").textContent = head;
+  $("rHead").style.color = G.cleared ? "var(--yellow)" : G.mode === "practice" ? "var(--green)" : "";
+  $("rLabel").textContent = label;
+  $("rLv").textContent = big;
+  $("rSpeed").textContent = sub;
   $("rNew").innerHTML = isNew ? `<span class="newrec">自己ベスト更新！</span>` : "";
   $("rCorrect").textContent = `${G.correct}問`;
   $("rRate").textContent = G.total ? `${Math.round((G.correct / G.total) * 100)}%` : "-";
   $("rCombo").textContent = G.maxCombo;
   $("rTime").textContent = G.correct ? `${(avg / 1000).toFixed(2)}秒` : "-";
-  drawCondition(rec, prev);
   show("result");
 }
 
-// 今日のコンディション：同じ狂い度の、直近の自分の記録と比べる
+// 今日のコンディション：同じ狂い度・同じスタートレベルの、直近の自分の記録と比べる
 function drawCondition(rec, prev) {
   const face = $("cFace"), text = $("cText"), note = $("cNote");
   const sameStart = prev.filter((h) => h.start === rec.start);
@@ -672,7 +931,7 @@ function drawCondition(rec, prev) {
     face.textContent = "はかり中…";
     text.textContent = "比べるための記録を集めています。";
     note.textContent = `同じ狂い度・同じスタートレベルで、あと${3 - sameStart.length}回遊ぶと判定できるようになります。`;
-    return;
+    return "";
   }
   // 到った高さ（レベル）と、正解までの速さを合わせて見る
   const climb = (h) => h.lv - h.start + (h.correct ? 0.2 : 0);
@@ -691,10 +950,38 @@ function drawCondition(rec, prev) {
   face.textContent = f;
   text.textContent = t;
   note.textContent = `直近${sameStart.length}回の自分（平均 Lv${(sameStart.reduce((a, h) => a + h.lv, 0) / sameStart.length).toFixed(1)}・1問 ${(avgMs / 1000).toFixed(2)}秒）と比べています。`;
+  return f;
 }
 
 $("againBtn").onclick = () => startGame();
-$("toTitleBtn").onclick = () => { drawTitle(); show("title"); };
+$("toTitleBtn").onclick = toTitle;
+
+// ---------- 記録 ----------
+function drawRecords() {
+  $("recSurvival").innerHTML = `<tr><th>狂い度</th><th style="text-align:right">最高レベル</th></tr>` +
+    SPEEDS.map((s, i) => `<tr><td>${s.name}（${s.note}）</td><td class="num">${save.best[i] ? "Lv" + save.best[i] : "-"}</td></tr>`).join("");
+  const reach = Math.min(save.missionMax, MISSIONS.length);
+  const allClear = !!save.missionAll;
+  $("recMission").innerHTML = `到達：<span class="face-s">${reach}面</span> / ${MISSIONS.length}面${allClear ? "　（全面制覇の記録あり）" : ""}`;
+  $("recTrial").innerHTML = `<tr><th>設定</th><th style="text-align:right">最大連続正解</th></tr>` +
+    TRIALS.map((t, i) => `<tr><td>${t.key}：${t.name}（${t.n}枚・${SPEEDS[t.s].name}）</td><td class="num">${save.trialBest[i] || 0}</td></tr>`).join("");
+  const recent = save.history.filter((h) => (h.mode || "survival") === "survival").slice(-10).reverse();
+  const fmt = (t) => { const d = new Date(t); return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
+  $("recCond").innerHTML = recent.length
+    ? `<tr><th>日時</th><th>狂い度</th><th>到達</th><th>判定</th></tr>` +
+      recent.map((h) => `<tr><td>${fmt(h.t)}</td><td>${SPEEDS[h.speed].name}</td><td>Lv${h.lv}</td><td class="face-s">${h.face || "はかり中"}</td></tr>`).join("")
+    : `<tr><td class="muted">まだ記録がありません。サバイバルで遊ぶと、ここに並びます。</td></tr>`;
+  const w = $("wipeBtn");
+  w.textContent = "すべての記録を消す"; w.classList.remove("sure");
+}
+$("wipeBtn").onclick = () => {
+  const w = $("wipeBtn");
+  if (!w.classList.contains("sure")) { w.textContent = "本当に消す？（もう一度押すと消えます）"; w.classList.add("sure"); return; }
+  const keepSound = save.sound;
+  save = DEFAULT(); save.sound = keepSound; store();
+  startLv = 1; startMission = 1;
+  drawRecords();
+};
 
 // ---------- キーボード ----------
 addEventListener("keydown", (e) => {
@@ -702,25 +989,24 @@ addEventListener("keydown", (e) => {
   let n = null;
   if (/^[0-9]$/.test(e.key)) n = Number(e.key);
   else if (/^Numpad[0-9]$/.test(e.code)) n = Number(e.code.slice(6));
-  const onTitle = !screens.title.classList.contains("hide");
-  const onGame = !screens.game.classList.contains("hide");
-  const onResult = !screens.result.classList.contains("hide");
-  const paused = !$("pause").classList.contains("hide");
+  const where = current();
+  const onButton = document.activeElement?.tagName === "BUTTON";
 
-  if (paused) {
-    if (e.key === "Escape" || e.key === "Enter") { e.preventDefault(); resume(); }
+  if (!$("pause").classList.contains("hide")) {
+    if (e.key === "Escape" || (e.key === "Enter" && !onButton)) { e.preventDefault(); resume(); }
     return;
   }
-  if (onGame) {
+  if (where === "game") {
     if (n !== null) { e.preventDefault(); press(n); }
     else if (e.key === "Escape") { e.preventDefault(); pause(); }
     return;
   }
-  if (onTitle && (e.key === "Enter" || e.key === " ") && document.activeElement?.tagName !== "BUTTON") { e.preventDefault(); startGame(); }
-  if (onResult) {
-    if (e.key === "Enter" && document.activeElement?.tagName !== "BUTTON") { e.preventDefault(); startGame(); }
-    if (e.key === "Escape") { e.preventDefault(); drawTitle(); show("title"); }
+  if (where === "title" && (e.key === "Enter" || e.key === " ") && !onButton) { e.preventDefault(); startGame(); }
+  if (where === "result") {
+    if (e.key === "Enter" && !onButton) { e.preventDefault(); startGame(); }
+    if (e.key === "Escape") { e.preventDefault(); toTitle(); }
   }
+  if (where === "records" && e.key === "Escape") { e.preventDefault(); toTitle(); }
 });
 
 drawTitle();
