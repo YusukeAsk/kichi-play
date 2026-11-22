@@ -1,0 +1,729 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>足し狂い｜ハイスピード足し算ゲーム</title>
+<meta name="description" content="次々と現れる数字を、ひたすら足し続けろ。パネルの数を全部足した「一の位」を答えるハイスピード足し算ゲーム。漢数字・ローマ数字・サイコロ・多角形も登場します。">
+<meta name="theme-color" content="#141a2e">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23141a2e'/%3E%3Ctext x='32' y='46' font-size='40' text-anchor='middle' fill='%23f8d030' font-family='sans-serif' font-weight='900'%3E%2B%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #141a2e; --panel: #1d2541; --ink: #f2f0e6; --sub: #9aa3c7; --line: #36406a;
+    --yellow: #f8d030; --green: #58d068; --red: #e85848; --shadow: #0a0e1c;
+    --dot: "DotGothic16", "Hiragino Sans", "Meiryo", sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    background-image: radial-gradient(var(--line) 1px, transparent 1px);
+    background-size: 16px 16px;
+    color: var(--ink); font-family: var(--dot); line-height: 1.6;
+    -webkit-tap-highlight-color: transparent; overscroll-behavior: none;
+  }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+  .hide { display: none !important; }
+  .scr { max-width: 540px; margin: 0 auto; padding: 16px 16px calc(16px + env(safe-area-inset-bottom)); min-height: 100dvh; }
+
+  .box { background: var(--panel); border: 3px solid var(--ink); box-shadow: 6px 6px 0 var(--shadow); padding: 14px 16px; }
+  .btn {
+    display: inline-block; padding: 10px 18px; background: var(--panel); border: 3px solid var(--ink);
+    box-shadow: 4px 4px 0 var(--shadow); letter-spacing: .08em; touch-action: manipulation;
+    transition: transform .06s, box-shadow .06s;
+  }
+  .btn:hover { border-color: var(--yellow); }
+  .btn:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--shadow); }
+  .btn.go { background: var(--yellow); color: var(--bg); border-color: var(--yellow); font-size: 20px; }
+  .muted { color: var(--sub); font-size: 13px; }
+  kbd { font-family: var(--dot); padding: 0 5px; border: 1px solid var(--sub); border-radius: 3px; font-size: 12px; }
+
+  /* ===== タイトル ===== */
+  .back { font-size: 13px; color: var(--sub); text-decoration: none; }
+  .back:hover { color: var(--yellow); }
+  .logo { margin-top: 18px; text-align: center; }
+  .logo h1 {
+    font-size: clamp(56px, 18vw, 92px); letter-spacing: .12em; padding-left: .12em; line-height: 1.05;
+    color: var(--yellow); text-shadow: 5px 5px 0 var(--red);
+  }
+  .logo p { margin-top: 10px; color: var(--sub); letter-spacing: .25em; font-size: 13px; }
+  .shake { animation: shake 2.4s infinite; display: inline-block; }
+  @keyframes shake { 0%, 88%, 100% { transform: none; } 90% { transform: translate(-2px, 1px) rotate(-1.5deg); } 93% { transform: translate(2px, -1px) rotate(1.5deg); } 96% { transform: translate(-1px, 0); } }
+
+  .how { margin-top: 22px; }
+  .how b { color: var(--yellow); font-weight: 400; }
+  .ex { margin: 10px 0 4px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 18px; }
+  .ex .card { --s: 46px; }
+  .ex .ans { color: var(--yellow); }
+
+  .sec { margin-top: 20px; }
+  .sec h2 { font-size: 14px; font-weight: 400; color: var(--sub); letter-spacing: .2em; margin-bottom: 8px; }
+  .speeds { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .speed { padding: 10px 4px; text-align: center; background: var(--panel); border: 3px solid var(--line); line-height: 1.3; touch-action: manipulation; }
+  .speed b { display: block; font-size: 19px; font-weight: 400; }
+  .speed small { display: block; margin-top: 4px; font-size: 11px; color: var(--sub); }
+  .speed.on { border-color: var(--yellow); box-shadow: 0 0 0 2px var(--yellow) inset; }
+  .speed.on b { color: var(--yellow); }
+  .starts { display: flex; flex-wrap: wrap; gap: 8px; }
+  .start { min-width: 64px; padding: 6px 10px; background: var(--panel); border: 3px solid var(--line); touch-action: manipulation; }
+  .start.on { border-color: var(--yellow); color: var(--yellow); }
+  .go-row { margin-top: 24px; text-align: center; }
+  .go-row .muted { margin-top: 10px; }
+  .credit { margin-top: 28px; font-size: 11px; color: var(--sub); text-align: center; line-height: 1.8; }
+  .toggles { display: flex; justify-content: space-between; align-items: center; }
+  .snd { font-size: 13px; color: var(--sub); padding: 4px 8px; border: 2px solid var(--line); }
+  .snd.on { color: var(--ink); border-color: var(--sub); }
+
+  /* ===== ゲーム ===== */
+  #game { display: flex; flex-direction: column; gap: 10px; }
+  .hud { display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; align-items: center; }
+  .lv { font-size: 24px; color: var(--yellow); line-height: 1; }
+  .lv small { font-size: 13px; color: var(--sub); margin-left: 8px; }
+  .hud-r { display: flex; align-items: center; gap: 10px; }
+  .life { color: var(--red); font-size: 20px; letter-spacing: 2px; line-height: 1; }
+  .life i { font-style: normal; opacity: .2; }
+  .icon-btn { width: 36px; height: 36px; display: grid; place-items: center; border: 2px solid var(--line); font-size: 14px; touch-action: manipulation; }
+  .hud2 { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--sub); }
+  .combo b { color: var(--ink); font-weight: 400; font-size: 16px; }
+  .combo.hot b { color: var(--yellow); }
+  .types { display: flex; gap: 4px; }
+  .types span { width: 26px; height: 22px; display: grid; place-items: center; border: 1px solid var(--line); font-size: 12px; color: var(--line); }
+  .types span.on { border-color: var(--green); color: var(--green); }
+
+  .stage { position: relative; min-height: 196px; display: grid; place-items: center; padding: 14px 8px; background: #0f1426; border: 3px solid var(--ink); box-shadow: 6px 6px 0 var(--shadow); transition: background .12s; }
+  .stage.ok { background: #143323; }
+  .stage.ng { background: #3a1616; }
+  .panels { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+  .card { width: var(--s, 96px); height: var(--s, 96px); background: #fbfaf3; border: 3px solid #0a0e1c; box-shadow: 3px 3px 0 #000; color: #141a2e; }
+  .card svg { width: 100%; height: 100%; display: block; }
+  .pop .card { animation: pop .09s ease-out both; }
+  .pop .card:nth-child(2) { animation-delay: .015s; } .pop .card:nth-child(3) { animation-delay: .03s; } .pop .card:nth-child(4) { animation-delay: .045s; }
+  @keyframes pop { from { transform: scale(.82); opacity: .2; } }
+  .banner { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; font-size: 34px; color: var(--yellow); text-shadow: 3px 3px 0 var(--red); background: rgba(15,20,38,.82); }
+  .banner small { display: block; font-size: 15px; color: var(--ink); text-shadow: none; margin-top: 6px; }
+
+  .bar { height: 16px; border: 3px solid var(--ink); background: #0f1426; }
+  .bar i { display: block; height: 100%; width: 100%; background: var(--green); transform-origin: left; }
+  .msg { height: 26px; text-align: center; font-size: 18px; }
+  .msg.ok { color: var(--green); }
+  .msg.ng { color: var(--red); }
+
+  .pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; user-select: none; -webkit-user-select: none; }
+  @media (hover: none) { #game { height: 100dvh; } .stage { flex: 1 1 auto; } }
+  .key { height: clamp(52px, 8.5dvh, 66px); font-size: 26px; background: var(--panel); border: 3px solid var(--ink); box-shadow: 4px 4px 0 var(--shadow); touch-action: manipulation; }
+  .key.zero { grid-column: 1 / -1; }
+  .key.down { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--shadow); border-color: var(--yellow); color: var(--yellow); }
+  .pad-hint { text-align: center; font-size: 12px; color: var(--sub); }
+  @media (hover: hover) and (pointer: fine) {
+    .key { height: 46px; font-size: 20px; }
+  }
+  @media (hover: none) { .pad-hint { display: none; } }
+
+  /* ===== 一時停止・結果 ===== */
+  .overlay { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: rgba(10,14,28,.86); padding: 16px; }
+  .overlay .box { width: min(360px, 100%); text-align: center; }
+  .overlay h2 { font-size: 26px; font-weight: 400; color: var(--yellow); }
+  .overlay .btns { margin-top: 16px; display: grid; gap: 10px; }
+
+  .res-head { margin-top: 24px; text-align: center; }
+  .res-head h2 { font-size: 40px; font-weight: 400; color: var(--red); letter-spacing: .1em; text-shadow: 3px 3px 0 var(--shadow); }
+  .res-lv { margin-top: 6px; font-size: 22px; }
+  .res-lv b { font-size: 46px; color: var(--yellow); font-weight: 400; }
+  .newrec { display: inline-block; margin-top: 6px; padding: 0 10px; background: var(--yellow); color: var(--bg); font-size: 14px; letter-spacing: .15em; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: .35; } }
+  .stats { margin-top: 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat { padding: 10px 12px; background: var(--panel); border: 2px solid var(--line); }
+  .stat small { display: block; font-size: 12px; color: var(--sub); }
+  .stat b { font-size: 22px; font-weight: 400; }
+  .cond { margin-top: 18px; }
+  .cond .face { font-size: 26px; color: var(--yellow); }
+  .cond p { margin-top: 4px; font-size: 14px; }
+  .cond .muted { margin-top: 6px; }
+  .res-btns { margin-top: 22px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .shake, .newrec, .pop .card { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ タイトル ============ -->
+<main class="scr" id="title">
+  <div class="toggles">
+    <a class="back" href="/">← PLAY にもどる</a>
+    <button class="snd" type="button" data-snd>音：あり</button>
+  </div>
+
+  <div class="logo">
+    <h1><span class="shake">足し狂い</span></h1>
+    <p>ハイスピード足し算ゲーム</p>
+  </div>
+
+  <div class="box how">
+    パネルの数を<b>全部足した「一の位」</b>を、数字キーで答えろ。
+    <div class="ex" aria-label="例：8と7なら、足して15、答えは5">
+      <span class="card" data-ex="A8"></span>＋<span class="card" data-ex="D7"></span>＝ 15 → <span class="ans">5</span>
+    </div>
+    <div class="muted">レベルが上がると、漢数字・ローマ数字・サイコロ・多角形まで混ざってくる。5問正解でレベルアップ。ミスか時間切れでライフが1つ減り、3つ失うと終わり。</div>
+  </div>
+
+  <div class="sec">
+    <h2>狂い度（制限時間）</h2>
+    <div class="speeds" id="speeds"></div>
+  </div>
+
+  <div class="sec" id="startSec">
+    <h2>スタートするレベル</h2>
+    <div class="starts" id="starts"></div>
+    <p class="muted" style="margin-top:6px">16レベルを越えるごとに、次からその先のレベルで始められます。</p>
+  </div>
+
+  <div class="go-row">
+    <button class="btn go" type="button" id="goBtn">はじめる</button>
+    <p class="muted"><kbd>Enter</kbd> でもはじまる</p>
+  </div>
+
+  <p class="credit">
+    遊び方のルールは、2004年のフリーソフト「ADD-MANIA」（うにうに 作）に着想を得ています。<br>
+    絵・音・プログラムは、すべてこのサイトのために新しく作りました。記録はこのブラウザの中にだけ保存されます。
+  </p>
+</main>
+
+<!-- ============ ゲーム ============ -->
+<main class="scr hide" id="game">
+  <div class="hud">
+    <div class="lv">LEVEL <span id="lv">1</span><small id="left">あと5問</small></div>
+    <div class="hud-r">
+      <div class="life" id="life" aria-label="ライフ"></div>
+      <button class="icon-btn" type="button" id="pauseBtn" aria-label="一時停止">II</button>
+    </div>
+  </div>
+  <div class="hud2">
+    <div class="combo" id="comboBox"><b id="combo">0</b> COMBO</div>
+    <div class="types" id="types" aria-label="出てくるパネルの種類"></div>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="panels" id="panels"></div>
+    <div class="banner hide" id="banner"></div>
+  </div>
+  <div class="bar"><i id="bar"></i></div>
+  <div class="msg" id="msg"></div>
+
+  <div class="pad" id="pad"></div>
+  <p class="pad-hint">キーボードの数字キー（テンキーも可）で答えられます。<kbd>Esc</kbd> で一時停止</p>
+</main>
+
+<!-- ============ 結果 ============ -->
+<main class="scr hide" id="result">
+  <div class="res-head">
+    <h2>GAME OVER</h2>
+    <div class="res-lv">LEVEL <b id="rLv">1</b></div>
+    <div class="muted" id="rSpeed"></div>
+    <div id="rNew"></div>
+  </div>
+  <div class="stats">
+    <div class="stat"><small>正解</small><b id="rCorrect">0</b></div>
+    <div class="stat"><small>正答率</small><b id="rRate">0%</b></div>
+    <div class="stat"><small>最大コンボ</small><b id="rCombo">0</b></div>
+    <div class="stat"><small>1問あたり（正解時）</small><b id="rTime">-</b></div>
+  </div>
+  <div class="box cond">
+    <div class="muted">今日の脳のコンディション</div>
+    <div class="face" id="cFace"></div>
+    <p id="cText"></p>
+    <p class="muted" id="cNote"></p>
+  </div>
+  <div class="res-btns">
+    <button class="btn go" type="button" id="againBtn">もう一度</button>
+    <button class="btn" type="button" id="toTitleBtn">タイトルへ</button>
+  </div>
+  <p class="muted" style="text-align:center;margin-top:10px"><kbd>Enter</kbd> もう一度　<kbd>Esc</kbd> タイトルへ</p>
+</main>
+
+<!-- ============ 一時停止 ============ -->
+<div class="overlay hide" id="pause">
+  <div class="box">
+    <h2>一時停止</h2>
+    <p class="muted" style="margin-top:6px">深呼吸して、また狂おう。</p>
+    <div class="btns">
+      <button class="btn go" type="button" id="resumeBtn">再開する</button>
+      <button class="btn" type="button" data-snd>音：あり</button>
+      <button class="btn" type="button" id="quitBtn">やめる（ここで終了）</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* =========================================================
+   足し狂い
+   - パネルの数を全部足した一の位を答える
+   - 5問正解でレベルアップ。16レベルごとにパネルが1枚増える（最大7枚）
+   - ライフ3。不正解・時間切れで1つ減る
+   ========================================================= */
+
+// ---------- 設定 ----------
+const SPEEDS = [
+  { name: "正気", note: "ゆっくり", base: 7.0 },
+  { name: "乱心", note: "ふつう",   base: 5.0 },
+  { name: "狂乱", note: "はやい",   base: 3.6 },
+  { name: "発狂", note: "げきそく", base: 2.6 },
+];
+const TYPES = ["A", "C", "R", "D", "P"]; // アラビア数字・漢数字・ローマ数字・サイコロ・多角形
+const TYPE_LABEL = { A: "1", C: "壱", R: "IV", D: "⚄", P: "△" };
+// 16レベルを1まとまりとして、出てくるパネルの種類が巡る
+const CYCLE = ["A", "C", "R", "D", "P", "ACR", "ACD", "ACP", "ARD", "ARP", "ADP", "CRD", "CRP", "CDP", "RDP", "ACRDP"];
+const PER_LEVEL = 5;
+const LIVES = 3;
+
+const panelCount = (lv) => Math.min(2 + Math.floor((lv - 1) / 16), 7);
+const typesOf = (lv) => (lv <= 96 ? CYCLE[(lv - 1) % 16] : "ACRDP").split("");
+function timeLimit(lv, speed) {
+  const n = panelCount(lv);
+  let t = SPEEDS[speed].base * (1 + 0.3 * (n - 2));
+  if (lv > 96) t *= Math.max(0.6, 1 - 0.01 * (lv - 96)); // レベル97からは、じわじわ縮む
+  return t * 1000;
+}
+
+// ---------- 記録（このブラウザの中だけ） ----------
+const KEY = "tashigurui:v1";
+let save = { sound: true, speed: 1, best: [0, 0, 0, 0], history: [] };
+try { Object.assign(save, JSON.parse(localStorage.getItem(KEY) || "{}")); } catch {}
+const store = () => { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch {} };
+
+// ---------- パネルの絵 ----------
+const KANJI = ["", "壱", "弐", "参", "四", "五", "六", "七", "八", "九", "十"];
+const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
+// サイコロ：1〜6はふつうの目。7〜10は「2列で並べる」のを基本に新しく決めた
+const PIPS = {
+  1: [[50, 50]],
+  2: [[28, 28], [72, 72]],
+  3: [[26, 26], [50, 50], [74, 74]],
+  4: [[28, 28], [72, 28], [28, 72], [72, 72]],
+  5: [[26, 26], [74, 26], [50, 50], [26, 74], [74, 74]],
+  6: [[30, 22], [70, 22], [30, 50], [70, 50], [30, 78], [70, 78]],
+  7: [[24, 22], [76, 22], [24, 50], [76, 50], [24, 78], [76, 78], [50, 50]],
+  8: [[32, 17], [68, 17], [32, 39], [68, 39], [32, 61], [68, 61], [32, 83], [68, 83]],
+  9: [[22, 22], [50, 22], [78, 22], [22, 50], [50, 50], [78, 50], [22, 78], [50, 78], [78, 78]],
+  10: [[33, 14], [67, 14], [33, 32], [67, 32], [33, 50], [67, 50], [33, 68], [67, 68], [33, 86], [67, 86]],
+};
+function panelSvg(type, n) {
+  let body = "";
+  if (type === "A") {
+    body = `<text x="50" y="52" font-size="${n === 10 ? 54 : 66}" font-weight="900" font-family="Arial Black, Arial, Helvetica, sans-serif" text-anchor="middle" dominant-baseline="central">${n}</text>`;
+  } else if (type === "C") {
+    body = `<text x="50" y="52" font-size="62" font-weight="700" font-family="'Hiragino Mincho ProN','Yu Mincho','YuMincho','MS Mincho',serif" text-anchor="middle" dominant-baseline="central">${KANJI[n]}</text>`;
+  } else if (type === "R") {
+    const s = ROMAN[n], size = s.length <= 2 ? 60 : s.length === 3 ? 46 : 36;
+    body = `<text x="50" y="52" font-size="${size}" font-weight="700" font-family="'Times New Roman', Times, Georgia, serif" text-anchor="middle" dominant-baseline="central" letter-spacing="-1">${s}</text>`;
+  } else if (type === "D") {
+    const r = n >= 8 ? 7 : n === 1 ? 11 : 8.5;
+    body = PIPS[n].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="currentColor"/>`).join("");
+  } else {
+    const sw = 'fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"';
+    if (n === 1) body = `<line x1="18" y1="50" x2="82" y2="50" ${sw}/>`;
+    else if (n === 2) body = `<line x1="18" y1="38" x2="82" y2="38" ${sw}/><line x1="18" y1="62" x2="82" y2="62" ${sw}/>`;
+    else {
+      // どの多角形も、てっぺんを角にそろえて描く（偶数か奇数かは底で見分けられる）
+      const pts = [];
+      for (let i = 0; i < n; i++) {
+        const a = -Math.PI / 2 + (i * 2 * Math.PI) / n;
+        pts.push(`${(50 + 38 * Math.cos(a)).toFixed(1)},${(53 + 38 * Math.sin(a)).toFixed(1)}`);
+      }
+      body = `<polygon points="${pts.join(" ")}" ${sw}/>`;
+    }
+  }
+  return `<svg viewBox="0 0 100 100" aria-hidden="true">${body}</svg>`;
+}
+
+// ---------- 音（すべてブラウザの中で鳴らす電子音。音声ファイルは使わない） ----------
+const Sound = (() => {
+  let ctx = null, master = null, bgmGain = null, noiseBuf = null;
+  function init() {
+    if (ctx) { if (ctx.state === "suspended") ctx.resume(); return; }
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    ctx = new AC();
+    master = ctx.createGain(); master.gain.value = 0.5; master.connect(ctx.destination);
+    bgmGain = ctx.createGain(); bgmGain.gain.value = 0.55; bgmGain.connect(master);
+    noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 0.5, ctx.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  const on = () => save.sound && ctx;
+  function tone(freq, t, dur, { type = "square", vol = 0.2, to = null, dest = master } = {}) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t);
+    if (to) o.frequency.exponentialRampToValueAtTime(to, t + dur);
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0008, t + dur);
+    o.connect(g); g.connect(dest); o.start(t); o.stop(t + dur + 0.02);
+  }
+  function noise(t, dur, vol, hp, dest = master) {
+    const s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+    s.buffer = noiseBuf; f.type = "highpass"; f.frequency.value = hp;
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0008, t + dur);
+    s.connect(f); f.connect(g); g.connect(dest); s.start(t); s.stop(t + dur + 0.02);
+  }
+  const se = {
+    ok() { const t = ctx.currentTime; tone(988, t, 0.06, { vol: 0.16 }); tone(1480, t + 0.05, 0.09, { vol: 0.16 }); },
+    ng() { const t = ctx.currentTime; tone(220, t, 0.28, { type: "sawtooth", vol: 0.2, to: 90 }); },
+    timeout() { const t = ctx.currentTime; tone(330, t, 0.12, { type: "sawtooth", vol: 0.16 }); tone(196, t + 0.12, 0.3, { type: "sawtooth", vol: 0.18, to: 80 }); },
+    up() { const t = ctx.currentTime; [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, t + i * 0.06, 0.12, { vol: 0.15 })); },
+    tick() { tone(660, ctx.currentTime, 0.08, { vol: 0.14 }); },
+    go() { tone(1320, ctx.currentTime, 0.22, { vol: 0.16 }); },
+    over() { const t = ctx.currentTime; [494, 440, 392, 349, 262].forEach((f, i) => tone(f, t + i * 0.16, 0.22, { type: "triangle", vol: 0.25 })); },
+  };
+
+  // ---- BGM：戦闘っぽい短調のループ（新しく作曲） ----
+  // 8分音符を1マスとして8マス=1小節。"-" は前の音をのばす、"." は休み
+  const N = (s) => { // "A4" → 周波数
+    const m = s.match(/^([A-G])(#?)(\d)$/);
+    const i = { C: -9, D: -7, E: -5, F: -4, G: -2, A: 0, B: 2 }[m[1]] + (m[2] ? 1 : 0) + (Number(m[3]) - 4) * 12;
+    return 440 * Math.pow(2, i / 12);
+  };
+  const LEAD = [
+    "E5 - A5 - G5 E5 D5 C5", "D5 - C5 A4 - C5 D5 E5", "D5 - B4 G4 - B4 D5 G5", "G#5 - E5 - B4 - D5 E5",
+    "A5 - E5 C5 A4 C5 E5 A5", "C6 - A5 F5 - A5 C6 A5", "B5 - G5 D5 - G5 B5 D6", "B5 - G#5 - E5 . E5 .",
+  ].map((b) => b.split(" "));
+  const ROOT = ["A2", "F2", "G2", "E2", "A2", "F2", "G2", "E2"];
+  let playing = false, step = 0, nextT = 0, timer = null, bpm = 150;
+  function schedule() {
+    while (nextT < ctx.currentTime + 0.12) {
+      const bar = Math.floor(step / 8) % 8, s = step % 8, e8 = 60 / bpm / 2;
+      // リード
+      const note = LEAD[bar][s];
+      if (note !== "-" && note !== ".") {
+        let len = 1;
+        while (s + len < 8 && LEAD[bar][s + len] === "-") len++;
+        tone(N(note), nextT, e8 * len * 0.92, { vol: 0.07, dest: bgmGain });
+      }
+      // ベース（ルートとオクターブ上を交互に刻む）
+      const r = N(ROOT[bar]) * (s % 2 ? 2 : 1);
+      tone(r, nextT, e8 * 0.8, { type: "triangle", vol: 0.32, dest: bgmGain });
+      // ドラム
+      if (s === 0 || s === 4) tone(150, nextT, 0.12, { type: "sine", vol: 0.5, to: 45, dest: bgmGain });
+      if (s === 2 || s === 6) noise(nextT, 0.1, 0.22, 1200, bgmGain);
+      noise(nextT + e8 / 2, 0.03, 0.08, 6000, bgmGain);
+      step++; nextT += e8;
+    }
+  }
+  return {
+    init,
+    play(name) { if (on()) se[name](); },
+    bgmStart(tempo) {
+      if (!on()) return;
+      bpm = tempo;
+      if (playing) return;
+      playing = true; step = 0; nextT = ctx.currentTime + 0.05;
+      bgmGain.gain.cancelScheduledValues(ctx.currentTime);
+      bgmGain.gain.setValueAtTime(0.55, ctx.currentTime);
+      schedule(); timer = setInterval(schedule, 25);
+    },
+    bgmTempo(tempo) { bpm = tempo; },
+    bgmStop() { playing = false; clearInterval(timer); },
+    get playing() { return playing; },
+  };
+})();
+
+// ---------- 画面の部品 ----------
+const $ = (id) => document.getElementById(id);
+const screens = { title: $("title"), game: $("game"), result: $("result") };
+function show(name) {
+  for (const [k, el] of Object.entries(screens)) el.classList.toggle("hide", k !== name);
+  scrollTo(0, 0);
+}
+
+// 例のパネル
+document.querySelectorAll("[data-ex]").forEach((el) => { el.innerHTML = panelSvg(el.dataset.ex[0], Number(el.dataset.ex.slice(1))); });
+
+// 音の切りかえ
+function drawSound() { document.querySelectorAll("[data-snd]").forEach((b) => { b.textContent = save.sound ? "音：あり" : "音：なし"; b.classList.toggle("on", save.sound); }); }
+document.querySelectorAll("[data-snd]").forEach((b) => (b.onclick = () => {
+  save.sound = !save.sound; store(); drawSound();
+  if (!save.sound) Sound.bgmStop();
+}));
+drawSound();
+
+// ---------- タイトル ----------
+let startLv = 1;
+function drawTitle() {
+  $("speeds").innerHTML = SPEEDS.map((s, i) => `<button class="speed${i === save.speed ? " on" : ""}" type="button" data-i="${i}">
+      <b>${s.name}</b><small>${s.note}</small><small>最高 Lv${save.best[i] || "-"}</small></button>`).join("");
+  $("speeds").querySelectorAll(".speed").forEach((b) => (b.onclick = () => { save.speed = Number(b.dataset.i); store(); startLv = 1; drawTitle(); }));
+  const best = save.best[save.speed] || 0;
+  const opts = [1];
+  for (let k = 1; 16 * k + 1 <= best; k++) opts.push(16 * k + 1);
+  if (!opts.includes(startLv)) startLv = 1;
+  $("startSec").classList.toggle("hide", opts.length < 2);
+  $("starts").innerHTML = opts.map((l) => `<button class="start${l === startLv ? " on" : ""}" type="button" data-l="${l}">Lv ${l}</button>`).join("");
+  $("starts").querySelectorAll(".start").forEach((b) => (b.onclick = () => { startLv = Number(b.dataset.l); drawTitle(); }));
+}
+$("goBtn").onclick = () => startGame();
+
+// ---------- 数字ボタン ----------
+$("pad").innerHTML = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map((n) => `<button class="key${n === 0 ? " zero" : ""}" type="button" data-n="${n}">${n}</button>`).join("");
+$("pad").querySelectorAll(".key").forEach((k) => {
+  k.addEventListener("pointerdown", (e) => { e.preventDefault(); press(Number(k.dataset.n)); });
+});
+function flashKey(n) {
+  const k = $("pad").querySelector(`[data-n="${n}"]`);
+  if (!k) return;
+  k.classList.add("down"); setTimeout(() => k.classList.remove("down"), 110);
+}
+
+// ---------- ゲーム本体 ----------
+const G = {
+  state: "idle", // idle | count | ask | wait | paused | over
+  lv: 1, left: PER_LEVEL, life: LIVES, combo: 0, maxCombo: 0, correct: 0, total: 0, okMs: 0,
+  nums: [], answer: 0, limit: 0, t0: 0, remain: 0, raf: 0, timers: [], speed: 1, resume: "",
+};
+const later = (fn, ms) => { const id = setTimeout(fn, ms); G.timers.push(id); return id; };
+const clearLater = () => { G.timers.forEach(clearTimeout); G.timers = []; };
+const tempoOf = (lv) => 148 + 7 * (panelCount(lv) - 2) + Math.min(SPEEDS.length - 1, G.speed) * 4;
+
+function startGame() {
+  Sound.init();
+  clearLater(); cancelAnimationFrame(G.raf);
+  Object.assign(G, { lv: startLv, left: PER_LEVEL, life: LIVES, combo: 0, maxCombo: 0, correct: 0, total: 0, okMs: 0, speed: save.speed });
+  show("game");
+  drawHud();
+  $("panels").innerHTML = "";
+  $("msg").textContent = ""; $("msg").className = "msg";
+  setBar(1);
+  // カウントダウン中のキー入力は答えとして扱わない
+  G.state = "count";
+  const steps = ["3", "2", "1", "GO!"];
+  steps.forEach((s, i) => later(() => {
+    banner(s === "GO!" ? `GO!<small>${SPEEDS[G.speed].name}・Lv${G.lv}から</small>` : s);
+    Sound.play(s === "GO!" ? "go" : "tick");
+  }, i * 600));
+  later(() => { banner(null); Sound.bgmStart(tempoOf(G.lv)); ask(); }, steps.length * 600);
+}
+
+function ask() {
+  const n = panelCount(G.lv), types = typesOf(G.lv);
+  G.nums = Array.from({ length: n }, () => ({ v: 1 + Math.floor(Math.random() * 10), t: types[Math.floor(Math.random() * types.length)] }));
+  G.answer = G.nums.reduce((a, b) => a + b.v, 0) % 10;
+  const p = $("panels");
+  p.classList.remove("pop"); void p.offsetWidth; p.classList.add("pop");
+  p.innerHTML = G.nums.map((x) => `<div class="card">${panelSvg(x.t, x.v)}</div>`).join("");
+  sizePanels();
+  $("stage").className = "stage";
+  G.limit = timeLimit(G.lv, G.speed); G.remain = G.limit;
+  G.t0 = performance.now(); G.state = "ask";
+  tick();
+}
+
+function tick() {
+  cancelAnimationFrame(G.raf);
+  const loop = (now) => {
+    if (G.state !== "ask") return;
+    const r = G.remain - (now - G.t0);
+    setBar(Math.max(0, r / G.limit));
+    if (r <= 0) { judge(null); return; }
+    G.raf = requestAnimationFrame(loop);
+  };
+  G.raf = requestAnimationFrame(loop);
+}
+
+function setBar(f) {
+  const b = $("bar");
+  b.style.transform = `scaleX(${f})`;
+  b.style.background = f > 0.5 ? "var(--green)" : f > 0.25 ? "var(--yellow)" : "var(--red)";
+}
+
+function press(n) {
+  flashKey(n);
+  if (G.state === "ask") judge(n);
+}
+
+function judge(n) {
+  G.state = "wait";
+  cancelAnimationFrame(G.raf);
+  const used = performance.now() - G.t0;
+  G.total++;
+  const msg = $("msg"), stage = $("stage");
+  if (n === G.answer) {
+    G.correct++; G.combo++; G.maxCombo = Math.max(G.maxCombo, G.combo); G.okMs += used; G.left--;
+    msg.textContent = G.combo >= 10 ? `せいかい！ ${G.combo}連続` : "せいかい！";
+    msg.className = "msg ok"; stage.className = "stage ok";
+    Sound.play("ok");
+    drawHud();
+    if (G.left === 0) later(levelUp, 220);
+    else later(ask, 240);
+  } else {
+    G.combo = 0; G.life--;
+    msg.textContent = n === null ? `時間切れ！ 答えは ${G.answer}` : `ちがう！ 答えは ${G.answer}`;
+    msg.className = "msg ng"; stage.className = "stage ng";
+    Sound.play(n === null ? "timeout" : "ng");
+    drawHud();
+    if (G.life <= 0) later(gameOver, 900);
+    else later(ask, 900);
+  }
+}
+
+function levelUp() {
+  const before = panelCount(G.lv);
+  G.lv++; G.left = PER_LEVEL;
+  drawHud();
+  Sound.play("up");
+  Sound.bgmTempo(tempoOf(G.lv));
+  const n = panelCount(G.lv);
+  const note = n > before ? `パネルが${n}枚に！` : typesOf(G.lv).length === 5 ? "全種類まざってくる" : "";
+  banner(`LEVEL ${G.lv}${note ? `<small>${note}</small>` : ""}`);
+  later(() => { banner(null); ask(); }, n > before ? 1300 : 750);
+}
+
+function drawHud() {
+  $("lv").textContent = G.lv;
+  $("left").textContent = `あと${G.left}問`;
+  $("life").innerHTML = "♥".repeat(Math.max(0, G.life)) + `<i>${"♥".repeat(Math.max(0, LIVES - G.life))}</i>`;
+  $("combo").textContent = G.combo;
+  $("comboBox").classList.toggle("hot", G.combo >= 10);
+  const on = typesOf(G.lv);
+  $("types").innerHTML = TYPES.map((t) => `<span class="${on.includes(t) ? "on" : ""}">${TYPE_LABEL[t]}</span>`).join("");
+}
+
+function banner(html) {
+  const b = $("banner");
+  if (!html) { b.classList.add("hide"); return; }
+  b.innerHTML = `<div>${html}</div>`; b.classList.remove("hide");
+}
+
+// パネルの大きさ：4枚までは1列、5枚以上は2段に分ける
+function sizePanels() {
+  const p = $("panels"), n = G.nums.length || 2;
+  const cols = n <= 4 ? n : Math.ceil(n / 2);
+  const st = $("stage"), rows = n <= 4 ? 1 : 2;
+  const w = st.clientWidth - 22, h = st.clientHeight - 34;
+  const byW = Math.floor((w - 10 * (cols - 1)) / cols);
+  const byH = Math.floor((h - 10 * (rows - 1)) / rows);
+  const s = Math.max(48, Math.min(130, byW, byH > 40 ? byH : byW));
+  p.style.setProperty("--s", s + "px");
+  p.style.maxWidth = (s * cols + 10 * (cols - 1)) + "px";
+}
+addEventListener("resize", () => { if (!screens.game.classList.contains("hide")) sizePanels(); });
+
+// ---------- 一時停止 ----------
+function pause() {
+  if (G.state !== "ask" && G.state !== "wait" && G.state !== "count") return;
+  if (G.state === "ask") G.remain -= performance.now() - G.t0;
+  G.resume = G.state;
+  // 「待ち」や「カウントダウン」中の予定は、再開時にやり直す
+  clearLater(); cancelAnimationFrame(G.raf);
+  G.state = "paused";
+  Sound.bgmStop();
+  $("pause").classList.remove("hide");
+}
+function resume() {
+  if (G.state !== "paused") return;
+  $("pause").classList.add("hide");
+  Sound.init();
+  Sound.bgmStart(tempoOf(G.lv));
+  banner(null);
+  if (G.life <= 0) { gameOver(); return; }
+  if (G.resume === "ask") { G.t0 = performance.now(); G.state = "ask"; tick(); } // 同じ問題の続きから
+  else if (G.left === 0) levelUp(); // 5問目に正解した直後に止めたとき
+  else ask();
+}
+$("pauseBtn").onclick = pause;
+$("resumeBtn").onclick = resume;
+$("quitBtn").onclick = () => { $("pause").classList.add("hide"); gameOver(); };
+document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); });
+
+// ---------- 終了と結果 ----------
+function gameOver() {
+  clearLater(); cancelAnimationFrame(G.raf);
+  G.state = "over";
+  Sound.bgmStop();
+  Sound.play("over");
+  const sp = G.speed;
+  const isNew = G.lv > (save.best[sp] || 0);
+  if (isNew) save.best[sp] = G.lv;
+  const avg = G.correct ? G.okMs / G.correct : 0;
+  const prev = save.history.filter((h) => h.speed === sp && h.correct >= 1).slice(-10);
+  const rec = { t: Date.now(), speed: sp, start: startLv, lv: G.lv, correct: G.correct, total: G.total, maxCombo: G.maxCombo, avgMs: Math.round(avg) };
+  save.history.push(rec);
+  save.history = save.history.slice(-200);
+  store();
+
+  $("rLv").textContent = G.lv;
+  $("rSpeed").textContent = `狂い度：${SPEEDS[sp].name}　（Lv${startLv}からスタート）`;
+  $("rNew").innerHTML = isNew ? `<span class="newrec">自己ベスト更新！</span>` : "";
+  $("rCorrect").textContent = `${G.correct}問`;
+  $("rRate").textContent = G.total ? `${Math.round((G.correct / G.total) * 100)}%` : "-";
+  $("rCombo").textContent = G.maxCombo;
+  $("rTime").textContent = G.correct ? `${(avg / 1000).toFixed(2)}秒` : "-";
+  drawCondition(rec, prev);
+  show("result");
+}
+
+// 今日のコンディション：同じ狂い度の、直近の自分の記録と比べる
+function drawCondition(rec, prev) {
+  const face = $("cFace"), text = $("cText"), note = $("cNote");
+  const sameStart = prev.filter((h) => h.start === rec.start);
+  if (sameStart.length < 3) {
+    face.textContent = "はかり中…";
+    text.textContent = "比べるための記録を集めています。";
+    note.textContent = `同じ狂い度・同じスタートレベルで、あと${3 - sameStart.length}回遊ぶと判定できるようになります。`;
+    return;
+  }
+  // 到った高さ（レベル）と、正解までの速さを合わせて見る
+  const climb = (h) => h.lv - h.start + (h.correct ? 0.2 : 0);
+  const avgClimb = sameStart.reduce((a, h) => a + climb(h), 0) / sameStart.length;
+  const speeds = sameStart.filter((h) => h.avgMs > 0);
+  const avgMs = speeds.length ? speeds.reduce((a, h) => a + h.avgMs, 0) / speeds.length : rec.avgMs;
+  const r1 = (climb(rec) + 1) / (avgClimb + 1);
+  const r2 = rec.avgMs && avgMs ? avgMs / rec.avgMs : 1;
+  const score = r1 * 0.75 + r2 * 0.25;
+  let f, t;
+  if (score >= 1.2) { f = "絶好調"; t = "脳が冴えわたっている。今日は大事な仕事を入れていい日。"; }
+  else if (score >= 1.03) { f = "好調"; t = "いつもより頭が回っている。この調子でいこう。"; }
+  else if (score >= 0.88) { f = "ふつう"; t = "いつもどおりの脳。安定しているのも実力のうち。"; }
+  else if (score >= 0.7) { f = "ちょっとお疲れ"; t = "少し回転が鈍め。水を一杯飲んで、深呼吸を。"; }
+  else { f = "おつかれ気味"; t = "今日は脳が休みたがっている。休むのもトレーニングのうち。"; }
+  face.textContent = f;
+  text.textContent = t;
+  note.textContent = `直近${sameStart.length}回の自分（平均 Lv${(sameStart.reduce((a, h) => a + h.lv, 0) / sameStart.length).toFixed(1)}・1問 ${(avgMs / 1000).toFixed(2)}秒）と比べています。`;
+}
+
+$("againBtn").onclick = () => startGame();
+$("toTitleBtn").onclick = () => { drawTitle(); show("title"); };
+
+// ---------- キーボード ----------
+addEventListener("keydown", (e) => {
+  if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+  let n = null;
+  if (/^[0-9]$/.test(e.key)) n = Number(e.key);
+  else if (/^Numpad[0-9]$/.test(e.code)) n = Number(e.code.slice(6));
+  const onTitle = !screens.title.classList.contains("hide");
+  const onGame = !screens.game.classList.contains("hide");
+  const onResult = !screens.result.classList.contains("hide");
+  const paused = !$("pause").classList.contains("hide");
+
+  if (paused) {
+    if (e.key === "Escape" || e.key === "Enter") { e.preventDefault(); resume(); }
+    return;
+  }
+  if (onGame) {
+    if (n !== null) { e.preventDefault(); press(n); }
+    else if (e.key === "Escape") { e.preventDefault(); pause(); }
+    return;
+  }
+  if (onTitle && (e.key === "Enter" || e.key === " ") && document.activeElement?.tagName !== "BUTTON") { e.preventDefault(); startGame(); }
+  if (onResult) {
+    if (e.key === "Enter" && document.activeElement?.tagName !== "BUTTON") { e.preventDefault(); startGame(); }
+    if (e.key === "Escape") { e.preventDefault(); drawTitle(); show("title"); }
+  }
+});
+
+drawTitle();
+</script>
+</body>
+</html>
