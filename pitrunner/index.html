@@ -1,0 +1,1182 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ピットランナー｜穴掘りアクションパズル</title>
+<meta name="description" content="穴を掘って地底の番人ムジナを落とし、金塊を全部集めて地上へ脱出する。全12ステージのドット絵アクションパズル。">
+<meta name="theme-color" content="#17111a">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%2317111a'/%3E%3Ctext x='32' y='46' font-size='40' text-anchor='middle'%3E%E2%9B%8F%EF%B8%8F%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Press+Start+2P&display=swap">
+<style>
+/* Layout: a home-console screen sitting in dark soil. Status line above, field in the middle, controls below on touch. */
+:root{
+  color-scheme:dark;
+  --soil:#17111a;      /* page ground */
+  --pit:#07050b;       /* screen frame */
+  --panel:#231927;     /* dialogs */
+  --gold:#f6c945;      /* the one bright thing */
+  --ember:#d9642a;     /* brick, primary action edge */
+  --bone:#efe3cc;      /* text */
+  --dim:#b3a39a;       /* secondary text */
+  --line:#4a3a4a;
+  --font-jp:"DotGothic16","Hiragino Kaku Gothic ProN","Yu Gothic",monospace;
+  --font-num:"Press Start 2P","DotGothic16",ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--soil);color:var(--bone);font-family:var(--font-jp);overscroll-behavior:none;
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+
+#app{height:100%;display:grid;grid-template-columns:minmax(0,1fr);grid-template-areas:"hud" "screen" "help";
+  justify-content:center;align-content:center;justify-items:center;row-gap:10px;
+  padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+#hud,#screen{width:min(100%,1008px,calc((100vh - 118px)*1.75));width:min(100%,1008px,calc((100dvh - 118px)*1.75))}
+#hud{grid-area:hud;display:flex;align-items:center;gap:8px 18px;flex-wrap:wrap;min-width:0}
+.stat{display:flex;align-items:baseline;gap:6px;white-space:nowrap}
+.stat span{font-size:13px;color:var(--dim)}
+.stat b{font-family:var(--font-num);font-weight:400;font-size:13px;font-variant-numeric:tabular-nums}
+#statGold b{color:var(--gold)}
+#stageName{font-size:15px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.spacer{flex:1 1 auto}
+.tool{background:transparent;border:2px solid var(--line);padding:4px 10px;font-size:13px;min-height:32px}
+.tool:hover{border-color:var(--bone)}
+
+#screen{grid-area:screen;position:relative;aspect-ratio:7/4;max-width:100%;background:#000;
+  box-shadow:0 0 0 4px var(--pit),0 0 0 6px var(--line)}
+canvas#field{display:block;width:100%;height:100%;image-rendering:pixelated;touch-action:none}
+#banner{position:absolute;left:0;right:0;top:2%;display:flex;justify-content:center;pointer-events:none;padding-inline:8px}
+#banner div{background:rgba(0,0,0,.82);border:2px solid var(--gold);padding:3px 10px;font-size:clamp(12px,1.9vw,18px);text-align:center;line-height:1.4}
+
+#help{grid-area:help;color:var(--dim);font-size:14px;text-align:center;line-height:1.6}
+#help kbd{font:inherit;color:var(--bone);border:1px solid var(--line);padding:0 5px}
+
+/* touch pad */
+.pad{display:none;touch-action:none}
+#padMove{grid-area:move;position:relative;width:148px;height:148px}
+#padMove .arm{position:absolute;background:var(--panel);border:2px solid var(--line)}
+#padMove .h{left:0;right:0;top:50px;height:48px}
+#padMove .v{top:0;bottom:0;left:50px;width:48px}
+#padMove .hub{position:absolute;left:52px;top:52px;width:44px;height:44px;background:var(--panel)}
+#padMove i{position:absolute;font-style:normal;color:var(--dim);font-size:16px;line-height:1;pointer-events:none}
+#padMove i.on{color:var(--gold)}
+#pU{left:66px;top:12px}#pD{left:66px;bottom:12px}#pL{left:12px;top:66px}#pR{right:12px;top:66px}
+#padDig{grid-area:dig;gap:12px;align-items:center}
+.digBtn{width:84px;height:84px;background:var(--panel);border:3px solid var(--ember);font-size:18px;line-height:1.25;touch-action:none}
+.digBtn.on{background:var(--ember);color:#17111a}
+.digBtn small{display:block;font-size:13px;color:inherit}
+
+@media (hover:none) and (pointer:coarse){
+  #help{display:none}
+  .pad{display:flex}
+  #padMove{display:block}
+  #app{grid-template-columns:auto auto;grid-template-areas:"hud hud" "screen screen" "move dig";justify-content:space-between;align-content:start;row-gap:14px}
+  #hud{gap:4px 12px}
+  #padDig{justify-self:end}
+  #padMove{justify-self:start}
+  @media (orientation:landscape) and (max-height:520px){
+    #stageName{display:none}
+    #hud{flex-wrap:nowrap;gap:10px}
+    .digBtn{width:76px;height:76px}
+    #padDig{flex-direction:column}
+    #app{grid-template-columns:148px minmax(0,1fr) 76px;grid-template-areas:"move hud dig" "move screen dig";grid-template-rows:auto minmax(0,1fr);column-gap:12px;row-gap:6px;align-content:center;align-items:center;height:100%}
+    #hud,#screen{width:min(100%,calc((100dvh - 62px)*1.75))}
+    #hud{justify-self:center}
+    #screen{justify-self:center;align-self:start}
+  }
+}
+
+/* dialogs */
+#overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(7,5,11,.72);
+  padding-block:calc(12px + env(safe-area-inset-top,0px)) calc(12px + env(safe-area-inset-bottom,0px));
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));z-index:5}
+#panel{width:min(100%,560px);max-height:100%;overflow:auto;background:var(--panel);border:4px solid var(--pit);box-shadow:0 0 0 2px var(--line);padding:22px 24px;display:flex;flex-direction:column;gap:14px}
+#panel h1,#panel h2{margin:0;font-weight:400;text-wrap:balance;line-height:1.2}
+#panel h1{font-size:clamp(34px,9vw,52px);letter-spacing:.04em}
+#panel h1 em{font-style:normal;color:var(--gold)}
+#panel h2{font-size:30px;color:var(--gold)}
+#panel p{margin:0;font-size:17px;line-height:1.7;max-width:34em}
+#logoArt{display:block;width:100%;max-width:400px;height:auto;image-rendering:pixelated}
+.rules{margin:0;padding:0;list-style:none;display:grid;gap:4px;font-size:16px;line-height:1.55;color:var(--bone)}
+.rules kbd{font:inherit;color:var(--gold)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.btn{background:var(--soil);border:3px solid var(--line);padding:10px 18px;font-size:18px;min-height:48px}
+.btn:hover{border-color:var(--bone)}
+.btn.primary{background:var(--gold);border-color:var(--gold);color:#17111a}
+.btn.primary:hover{background:#ffdc6b;border-color:#ffdc6b}
+#picker{display:flex;align-items:center;gap:8px;min-width:0;flex:1 1 220px}
+#picker button{width:44px;height:44px;background:var(--soil);border:2px solid var(--line);font-size:16px;flex:none}
+#pickLabel{min-width:0;font-size:16px;line-height:1.3}
+#pickLabel b{font-family:var(--font-num);font-weight:400;font-size:13px;color:var(--gold);display:block}
+.scores{display:flex;gap:24px;flex-wrap:wrap;font-size:16px}
+.scores b{font-family:var(--font-num);font-weight:400;font-size:15px;color:var(--gold);display:block;margin-top:4px;font-variant-numeric:tabular-nums}
+@media (max-height:480px){
+  #panel{width:min(100%,780px);padding:12px 16px;gap:8px}
+  #panel h1{font-size:30px}
+  #panel p,.rules{font-size:14px}
+  #logoArt{display:none}
+  .btn{min-height:42px;padding:6px 14px;font-size:16px}
+}
+#panel .back{font-size:14px;color:var(--dim);text-decoration:none;align-self:flex-start}
+#panel .back:hover{color:var(--gold)}
+html,body{margin:0}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+
+<main id="app">
+  <header id="hud">
+    <div class="stat" id="statStage"><span>ステージ</span><b id="hStage">01</b></div>
+    <div id="stageName"></div>
+    <div class="spacer"></div>
+    <div class="stat" id="statGold"><span>金塊</span><b id="hGold">0/0</b></div>
+    <div class="stat"><span>得点</span><b id="hScore">0</b></div>
+    <div class="stat"><span>残り</span><b id="hLives">5</b></div>
+    <button class="tool" id="btnSound" type="button">音 入</button>
+    <button class="tool" id="btnPause" type="button">止める</button>
+  </header>
+  <div id="screen">
+    <canvas id="field" width="448" height="256" aria-label="ゲーム画面"></canvas>
+    <div id="banner" hidden><div id="bannerText"></div></div>
+  </div>
+  <div id="padMove" class="pad" aria-hidden="true">
+    <div class="arm h"></div><div class="arm v"></div><div class="hub"></div>
+    <i id="pU">▲</i><i id="pD">▼</i><i id="pL">◀</i><i id="pR">▶</i>
+  </div>
+  <div id="padDig" class="pad">
+    <button class="digBtn" id="digL" type="button"><small>左を</small>掘る</button>
+    <button class="digBtn" id="digR" type="button"><small>右を</small>掘る</button>
+  </div>
+  <p id="help"><kbd>← → ↑ ↓</kbd> 移動　<kbd>Z</kbd> 左を掘る　<kbd>X</kbd> 右を掘る　<kbd>P</kbd> 止める</p>
+</main>
+<div id="overlay" hidden><section id="panel" role="dialog" aria-modal="true"></section></div>
+
+<script>
+/*CORE:BEGIN*/
+const W=28,H=16,T=120,HALF=60;
+const EMPTY=0,BRICK=1,SOLID=2,LADDER=3,BAR=4,TRAP=5,HOLE=6;
+const TUNE={run:10,digTicks:20,holeOpen:340,holeFill:40,trapTicks:170,shakeTicks:50,climb:6,deadTicks:80,spawnTicks:45,enemyDelay:50};
+
+/* ステージはすべてこのゲームのための書き下ろし。
+   . 空き  # レンガ(掘れる)  = 岩(掘れない)  H ハシゴ  - ロープ  $ 金塊
+   最下段のレンガも掘れるので、一番下の通路でも敵をやり過ごせる
+   X 偽の床(乗ると抜ける)  S 金塊を全部とると現れるハシゴ  P 自分  E ムジナ */
+const STAGES=[
+{name:'はじめの坑道',enemy:5,rows:[
+'.........................S..',
+'.........................S..',
+'....$.........E....$.....S..',
+'#######H#########H#########.',
+'.......H.........H..........',
+'.......H.........H..........',
+'.$.....H...$.....H.....$....',
+'#######H####-----H-----H####',
+'.......H...............H....',
+'.......H...............H....',
+'...$...H.......$.......H..$.',
+'###########H########H#######',
+'...........H........H.......',
+'...........H........H.......',
+'..P........H....$...H.......',
+'############################']},
+{name:'床下の金塊',enemy:5,rows:[
+'..S.........................',
+'..S.........................',
+'..S.......$...E...$.........',
+'#####H###############H######',
+'.....H...............H......',
+'.....H.......E.......H..$...',
+'##H###########H#############',
+'..H...........H.............',
+'..H...$.......H.........$...',
+'#H########################H#',
+'#H##$######$########$#####H#',
+'.H........................H.',
+'.H........................H.',
+'.H........................H.',
+'.H....P......$............H.',
+'############################']},
+{name:'綱わたり',enemy:6,rows:[
+'.............S..............',
+'.............S..............',
+'.$...........S......E....$..',
+'######H......S......H#######',
+'......H------H------H.......',
+'......H......H......H.......',
+'..$...H......H......H...$...',
+'#########....H....##########',
+'.............H..............',
+'.------------H------------..',
+'.....$.......H.......$......',
+'.............H..............',
+'...$.........H.........$....',
+'.............H..............',
+'.......P.....H...........E..',
+'############################']},
+{name:'見えない落とし穴',enemy:6,rows:[
+'S...........................',
+'S...........................',
+'S......$.........E......$...',
+'#####H####XX#####H###XX#H###',
+'.....H...........H......H...',
+'.....H....$......H...$..H...',
+'###H#####H#####H######H#####',
+'...H.....H.....H......H.....',
+'.$.H.....H..E..H......H.$...',
+'#####H####XX#####H###X######',
+'.....H...........H..........',
+'.....H....$......H...$......',
+'.....H...........H..........',
+'##H#########H######H########',
+'..H....P....H......H.....$..',
+'############################']},
+{name:'四つの部屋',enemy:6,rows:[
+'.S..........................',
+'.S..........................',
+'.S..$..........E.........$..',
+'######H#############H#######',
+'......H...=......=..H.......',
+'..$...H...=..$...=..H....$..',
+'###H#####H=######=H#####H###',
+'...H.....H=......=H.....H...',
+'...H.....H=..$...=H.$...H...',
+'###H#####H=######=H#####H###',
+'...H.....H=......=H.....H...',
+'.$.H.....H=..$...=H.....H.$.',
+'###H#####H=######=H#####H###',
+'...H.....H=......=H.....H...',
+'..PH.....H=...$...H...E.H...',
+'############################']},
+{name:'飛び石',enemy:6,rows:[
+'..........................S.',
+'.H---------------------H..S.',
+'.H..$....$....$....$...H..S.',
+'.H.###..###..###..###..H####',
+'.H.....................H....',
+'.H....$.....$.....$....H....',
+'.H...###...###...###...H....',
+'.H.....................H....',
+'.H..........E..........H....',
+'####H###############H#######',
+'....H...............H.......',
+'....H...$.....E.....H....$..',
+'########H#########H#########',
+'........H.........H.........',
+'..P.....H...$.....H.....E...',
+'############################']},
+{name:'ムジナの行列',enemy:6,rows:[
+'S...........................',
+'S...........................',
+'S.......$.......$.......$...',
+'###H################H#######',
+'...H................H.......',
+'...H..E...E...E.....H....$..',
+'#######H##########H#########',
+'.......H..........H.........',
+'.$.....H....$.....H.....$...',
+'####H##########H#####H######',
+'....H..........H.....H......',
+'....H...$..E...H.....H..$...',
+'#########H###########H######',
+'.........H...........H......',
+'...P.....H...$.......H......',
+'############################']},
+{name:'偽の床',enemy:6,rows:[
+'..............S.............',
+'..............S.............',
+'..$.........E.S.......$.....',
+'##X###H###X###X###H###X###X#',
+'......H...........H.........',
+'.$....H....$......H..$......',
+'###X#########H########X###X#',
+'.............H..............',
+'..$......$...H...E....$.....',
+'#####X####H##X####H###X#####',
+'..........H.......H.........',
+'.$........H..$....H.....$...',
+'###X####X##H#####X#####H###X',
+'...........H...........H....',
+'.P.........H.....$.....H..E.',
+'############################']},
+{name:'金庫の入口',enemy:7,rows:[
+'..........................S.',
+'..........................S.',
+'..$........E.........$....S.',
+'====##====H=====##====H=====',
+'.......=..H...........H.....',
+'....$..=..H.....$.....H.....',
+'=====##=====H====##===H=====',
+'.......=....H.........H.....',
+'.....$.=....H..E.$....H..$..',
+'==##=====H======##====H=====',
+'.........H............H.....',
+'..$......H.......$....H..$..',
+'=======##=H=====##=====H====',
+'..........H............H....',
+'.P...$....H........E.$.H....',
+'====####====####====####====']},
+{name:'三つの部屋',enemy:7,rows:[
+'.............S..............',
+'.............S..............',
+'.$....E......H.......$...$..',
+'###H####=====H=====#####H###',
+'...H....=....H.....=....H...',
+'...H..$.=....H..$..=.$..H...',
+'########=####H#####=########',
+'........=....H.....=........',
+'.$....$.=..$.H.$...=...E.$..',
+'########=####H#####=########',
+'........=....H.....=........',
+'.....$..=....H.....=..$.....',
+'##H#####=####H#####=#####H##',
+'..H..........H...........H..',
+'.PH..........H.........E.H..',
+'====####====####====####====']},
+{name:'ムジナの巣',enemy:7,rows:[
+'......................S.....',
+'......................S.....',
+'.$....E.........E.....S...$.',
+'####H########H#########H####',
+'....H--------H---------H....',
+'....H...$....H....$....H....',
+'####H###X####H####X####H####',
+'....H........H.........H....',
+'.$..H....$...H...$..E..H..$.',
+'####H########H#########H####',
+'....H--------H---------H....',
+'....H...$....H....$....H....',
+'##H##X#####X#H#X#####X##H###',
+'..H..........H..........H...',
+'..H......P...H..........H.E.',
+'====####====####====####====']},
+{name:'金庫の底',enemy:7,rows:[
+'S...........................',
+'S...........P...............',
+'S###H###############H#######',
+'....H...............H.......',
+'....H..$....E.....$.H...$...',
+'=======H=====##=====H=======',
+'.......H............H.......',
+'.$.E...H......$.....H....$..',
+'##H#########=##=########H###',
+'..H.......E.........E...H...',
+'..H..$..#H#####=...$....H...',
+'..H.....=H.....=........H...',
+'#####H##=H.$.$.=##H#########',
+'.....H..=H#####=..H.........',
+'.$...H..=H.$.$.=..H......$.E',
+'====####====####====####====']},
+];
+
+const CHAR={'.':EMPTY,'#':BRICK,'=':SOLID,'H':LADDER,'-':BAR,'X':TRAP};
+const approach=(v,t,s)=>v<t?Math.min(v+s,t):Math.max(v-s,t);
+
+class Run{
+  constructor(stage,rand=Math.random){
+    this.rand=rand; this.stage=stage;
+    this.map=[];this.gold=[];this.seen=[];this.hidden=[];
+    this.R=null;this.enemies=[];this.holes=[];this.ev=[];
+    this.total=0;this.got=0;this.status='ready';this.t=0;this.opened=false;
+    this.input={dirs:[],dig:0,digAge:0};
+    stage.rows.forEach((row,r)=>{
+      this.map[r]=[];this.gold[r]=[];this.seen[r]=[];
+      for(let c=0;c<W;c++){
+        const ch=row[c]||'.';
+        this.map[r][c]=CHAR[ch]??EMPTY;this.gold[r][c]=false;this.seen[r][c]=false;
+        if(ch==='$'){this.gold[r][c]=true;this.total++}
+        if(ch==='S')this.hidden.push([c,r]);
+        if(ch==='P')this.R={c,r,ox:0,oy:0,face:1,pose:'stand',anim:0,digT:0,dead:false};
+        if(ch==='E')this.enemies.push({c,r,ox:0,oy:0,face:-1,pose:'stand',anim:0,state:'free',t:0,carry:false,drop:0,speed:stage.enemy,holeR:0,exitDir:0,exitC:0,id:this.enemies.length});
+      }
+    });
+  }
+  tile(c,r){if(c<0||c>=W||r>=H)return SOLID;if(r<0)return EMPTY;return this.map[r][c]}
+  wall(c,r){const t=this.tile(c,r);return t===BRICK||t===SOLID}
+  active(e){return e.state!=='dead'&&e.state!=='spawn'}
+  enemyAt(c,r,self){return this.enemies.find(e=>e!==self&&this.active(e)&&e.c===c&&e.r===r)}
+  ground(c,r,self){const t=this.tile(c,r);return t===BRICK||t===SOLID||t===LADDER||!!this.enemyAt(c,r,self)}
+  emit(type,c,r){this.ev.push({type,c,r})}
+  shouldFall(e,self){
+    const t=this.tile(e.c,e.r);
+    if(t===LADDER)return false;
+    if(t===BAR&&e.oy===0)return false;
+    if(e.oy<0)return true;
+    return !this.ground(e.c,e.r+1,self);
+  }
+  doFall(e,s,self){
+    const stop=this.ground(e.c,e.r+1,self)||this.tile(e.c,e.r)===BAR||this.tile(e.c,e.r)===LADDER;
+    let n=e.oy+s;
+    if(e.oy<0&&n>=0&&stop)n=0;
+    e.oy=n;e.ox=approach(e.ox,0,s);
+    if(e.oy>=HALF){e.r++;e.oy-=T}
+    e.pose='fall';e.anim+=s;
+    if(this.tile(e.c,e.r)===TRAP&&!this.seen[e.r][e.c]){this.seen[e.r][e.c]=true}
+  }
+  stepX(e,d,s,blocked){
+    e.oy=approach(e.oy,0,s);
+    const b=blocked(e.c+d,e.r);
+    let n=e.ox+d*s;
+    if(b&&d*n>0)n=0;
+    e.ox=n;
+    if(d*e.ox>=HALF){e.c+=d;e.ox-=d*T}
+    e.face=d;e.anim+=s;
+    e.pose=this.tile(e.c,e.r)===BAR?'hang':'run';
+  }
+  stepY(e,d,s,blocked){
+    e.ox=approach(e.ox,0,s);
+    const b=blocked(e.c,e.r+d);
+    let n=e.oy+d*s;
+    if(b&&d*n>0)n=0;
+    if(d<0&&this.tile(e.c,e.r)!==LADDER&&n<0)n=0;
+    e.oy=n;
+    if(d*e.oy>=HALF){e.r+=d;e.oy-=d*T}
+    e.anim+=s;e.pose='climb';
+  }
+  canUp(e,blocked){
+    const here=this.tile(e.c,e.r),below=this.tile(e.c,e.r+1);
+    if(!(here===LADDER||(below===LADDER&&e.oy>0)))return false;
+    if(e.oy<=0&&(e.r===0||blocked(e.c,e.r-1)))return false;
+    return true;
+  }
+  canDown(e,blocked){return e.oy<0||!blocked(e.c,e.r+1)}
+  canSide(e,d,blocked){return !(blocked(e.c+d,e.r)&&d*e.ox>=0)}
+
+  /* ---- 自分 ---- */
+  tryDig(d){
+    const R=this.R,tc=R.c+d,br=R.r+1;
+    if(this.tile(tc,br)!==BRICK)return false;
+    if(this.tile(tc,R.r)!==EMPTY&&this.tile(tc,R.r)!==HOLE)return false;
+    if(R.r>=0&&this.gold[R.r]&&this.gold[R.r][tc])return false;
+    if(this.enemyAt(tc,R.r))return false;
+    if(this.holes.some(h=>h.c===tc&&h.r===br))return false;
+    R.ox=0;R.oy=0;R.face=d;R.pose='dig';R.digT=TUNE.digTicks;
+    this.holes.push({c:tc,r:br,phase:'dig',t:TUNE.digTicks});
+    this.emit('dig',tc,br);
+    return true;
+  }
+  tickRunner(){
+    const R=this.R,I=this.input,s=TUNE.run;
+    const wallR=(c,r)=>this.wall(c,r);
+    const wallD=(c,r)=>this.wall(c,r)||!!this.enemyAt(c,r);
+    if(R.digT>0){R.digT--;R.pose=R.digT>0?'dig':'stand';return}
+    if(this.shouldFall(R,null)){this.doFall(R,s,null);return}
+    if(I.dig){
+      if(this.tryDig(I.dig)){I.dig=0;return}
+      if(++I.digAge>8)I.dig=0;
+    }
+    let moved=false;
+    for(let i=I.dirs.length-1;i>=0&&!moved;i--){
+      const k=I.dirs[i];
+      if(k==='L'&&this.canSide(R,-1,wallR)){this.stepX(R,-1,s,wallR);moved=true}
+      else if(k==='R'&&this.canSide(R,1,wallR)){this.stepX(R,1,s,wallR);moved=true}
+      else if(k==='U'&&this.canUp(R,wallR)){this.stepY(R,-1,s,wallR);moved=true}
+      else if(k==='D'&&this.canDown(R,wallD)){this.stepY(R,1,s,wallD);moved=true}
+    }
+    if(!moved){
+      const t=this.tile(R.c,R.r);
+      R.pose=t===BAR?'hang':t===LADDER?'climb':'stand';
+    }
+  }
+  collect(){
+    const R=this.R;
+    if(R.r>=0&&R.r<H&&this.gold[R.r][R.c]&&Math.abs(R.ox)<=42&&Math.abs(R.oy)<=42){
+      this.gold[R.r][R.c]=false;this.got++;this.emit('gold',R.c,R.r);
+      if(this.got>=this.total)this.openExit();
+    }
+  }
+  openExit(){
+    if(this.opened)return;this.opened=true;
+    for(const[c,r]of this.hidden)this.map[r][c]=LADDER;
+    this.emit('reveal',0,0);
+  }
+
+  /* ---- ムジナ:その場の見通しだけで動くので、だまして穴へ誘える ---- */
+  scanFloor(x,y){
+    let left=x,right=x;
+    const step=(cx)=>{
+      const t=this.tile(cx,y);
+      if(t===BRICK||t===SOLID)return 0;
+      const b=this.tile(cx,y+1);
+      if(t===LADDER||t===BAR||y>=H-1||b===BRICK||b===SOLID||b===LADDER)return 1;
+      return 2;
+    };
+    while(left>0){const k=step(left-1);if(!k)break;left--;if(k===2)break}
+    while(right<W-1){const k=step(right+1);if(!k)break;right++;if(k===2)break}
+    return[left,right];
+  }
+  rate(y,x,ex){
+    const ry=this.R.r;
+    if(y===ry)return Math.abs(ex-x);
+    if(y>ry)return y-ry+200;
+    return ry-y+100;
+  }
+  branch(x,y){
+    const side=(cx)=>{
+      if(cx<0||cx>=W)return false;
+      const b=this.tile(cx,y+1);
+      return b===BRICK||b===LADDER||b===SOLID||this.tile(cx,y)===BAR;
+    };
+    return side(x-1)||side(x+1);
+  }
+  scanDown(x,e,dir,best){
+    let y=e.r;const ry=this.R.r;
+    while(y<H-1&&!this.wall(x,y+1)){
+      const t=this.tile(x,y);
+      if((t===LADDER||t===BAR)&&this.branch(x,y)&&y>=ry)break;
+      y++;
+    }
+    const v=this.rate(y,x,e.c);
+    if(v<best.v){best.v=v;best.d=dir}
+  }
+  scanUp(x,e,dir,best){
+    let y=e.r;const ry=this.R.r;
+    while(y>0&&this.tile(x,y)===LADDER){
+      y--;
+      if(this.branch(x,y)&&y<=ry)break;
+    }
+    const v=this.rate(y,x,e.c);
+    if(v<best.v){best.v=v;best.d=dir}
+  }
+  bestMove(e){
+    const x=e.c,y=e.r,R=this.R;
+    if(y===R.r&&x!==R.c){
+      const d=R.c>x?1:-1;let cx=x,ok=true;
+      while(cx!==R.c){
+        cx+=d;const t=this.tile(cx,y),b=this.tile(cx,y+1);
+        if(t===BRICK||t===SOLID){ok=false;break}
+        if(!(t===LADDER||t===BAR||y>=H-1||b===BRICK||b===SOLID||b===LADDER||this.enemyAt(cx,y+1,e))){ok=false;break}
+      }
+      if(ok)return d<0?'L':'R';
+    }
+    const best={v:255,d:null},[l,r]=this.scanFloor(x,y);
+    if(!this.wall(x,y+1)&&y<H-1)this.scanDown(x,e,'D',best);
+    if(this.tile(x,y)===LADDER)this.scanUp(x,e,'U',best);
+    for(let cx=x-1;cx>=l;cx--){
+      if(!this.wall(cx,y+1)&&y<H-1)this.scanDown(cx,e,'L',best);
+      if(this.tile(cx,y)===LADDER)this.scanUp(cx,e,'L',best);
+    }
+    for(let cx=x+1;cx<=r;cx++){
+      if(!this.wall(cx,y+1)&&y<H-1)this.scanDown(cx,e,'R',best);
+      if(this.tile(cx,y)===LADDER)this.scanUp(cx,e,'R',best);
+    }
+    return best.d;
+  }
+  killEnemy(e){
+    e.state='dead';e.t=TUNE.deadTicks;e.ox=0;e.oy=0;
+    this.emit('kill',e.c,e.r);
+  }
+  respawn(e){
+    const R=this.R;
+    for(let r=0;r<H;r++){
+      let cols=[];
+      for(let c=0;c<W;c++)if(this.tile(c,r)===EMPTY&&!this.gold[r][c]&&!this.enemyAt(c,r,e))cols.push(c);
+      const far=cols.filter(c=>Math.abs(c-R.c)>=5||Math.abs(r-R.r)>=4);
+      if(far.length)cols=far;
+      if(cols.length){
+        e.c=cols[Math.floor(this.rand()*cols.length)];e.r=r;e.ox=0;e.oy=0;
+        e.state='spawn';e.t=TUNE.spawnTicks;e.pose='stand';
+        return;
+      }
+    }
+    e.t=TUNE.deadTicks;
+  }
+  tickEnemy(e){
+    const block=(c,r)=>this.wall(c,r)||!!this.enemyAt(c,r,e);
+    const s=e.speed;
+    switch(e.state){
+      case'dead':if(--e.t<=0)this.respawn(e);return;
+      case'spawn':if(--e.t<=0)e.state='free';return;
+      case'trap':
+        e.ox=approach(e.ox,0,s);e.oy=approach(e.oy,0,s);e.pose='trap';
+        if(--e.t<=0){e.state='climb';e.holeR=e.r}
+        return;
+      case'climb':{
+        const top=e.holeR-1;
+        e.pose='climb';
+        if(e.r===e.holeR&&e.oy<=0&&block(e.c,top))return;
+        let n=e.oy-TUNE.climb;
+        if(n<=-HALF){e.r--;n+=T}
+        e.oy=n;e.anim+=TUNE.climb;
+        if(e.r===top&&e.oy<=0){
+          e.oy=0;e.state='exit';e.exitC=e.c;
+          e.exitDir=Math.sign(this.R.c-e.c)||1;
+        }
+        return;
+      }
+      case'exit':{
+        for(const d of[e.exitDir,-e.exitDir]){
+          if(this.canSide(e,d,block)){
+            e.exitDir=d;this.stepX(e,d,s,block);
+            if(e.c!==e.exitC)e.state='free';
+            return;
+          }
+        }
+        if(this.tile(e.c,e.r+1)!==HOLE)e.state='free';
+        return;
+      }
+    }
+    if(this.t<TUNE.enemyDelay){e.pose='stand';return}   // 動き出した直後は少しだけ猶予
+    if(this.tile(e.c,e.r)===HOLE&&Math.abs(e.ox)<=30&&e.oy>=0){
+      e.state='trap';e.t=TUNE.trapTicks;
+      if(e.carry&&this.tile(e.c,e.r-1)===EMPTY&&!this.gold[e.r-1][e.c]){
+        this.gold[e.r-1][e.c]=true;e.carry=false;
+      }
+      this.emit('trap',e.c,e.r);
+      return;
+    }
+    if(this.shouldFall(e,e)){this.doFall(e,s,e);return}
+    if(!e.carry&&this.gold[e.r]&&this.gold[e.r][e.c]&&Math.abs(e.ox)<=20&&Math.abs(e.oy)<=20){
+      this.gold[e.r][e.c]=false;e.carry=true;e.drop=180+Math.floor(this.rand()*420);
+    }else if(e.carry){
+      e.drop--;
+      if(e.drop<=0&&Math.abs(e.ox)<=12&&e.oy===0&&this.tile(e.c,e.r)===EMPTY&&!this.gold[e.r][e.c]){
+        const b=this.tile(e.c,e.r+1);
+        if(b===BRICK||b===SOLID||b===LADDER){this.gold[e.r][e.c]=true;e.carry=false}
+      }
+    }
+    const m=this.bestMove(e);
+    if(m==='L'&&this.canSide(e,-1,block))this.stepX(e,-1,s,block);
+    else if(m==='R'&&this.canSide(e,1,block))this.stepX(e,1,s,block);
+    else if(m==='U'&&this.canUp(e,block))this.stepY(e,-1,s,block);
+    else if(m==='D'&&this.canDown(e,block))this.stepY(e,1,s,block);
+    else{const t=this.tile(e.c,e.r);e.pose=t===BAR?'hang':t===LADDER?'climb':'stand'}
+  }
+
+  /* ---- 穴 ---- */
+  tickHoles(){
+    for(let i=this.holes.length-1;i>=0;i--){
+      const h=this.holes[i];
+      if(h.phase==='dig'){
+        if(this.enemyAt(h.c,h.r-1)){   // 真上にムジナが来ると掘れない
+          this.holes.splice(i,1);this.R.digT=0;this.R.pose='stand';continue;
+        }
+        if(--h.t<=0){this.map[h.r][h.c]=HOLE;h.phase='open';h.t=TUNE.holeOpen}
+      }else if(h.phase==='open'){
+        if(--h.t<=0){h.phase='fill';h.t=TUNE.holeFill}
+      }else if(--h.t<=0){
+        this.map[h.r][h.c]=BRICK;this.holes.splice(i,1);
+        this.emit('fill',h.c,h.r);
+        if(this.R.c===h.c&&this.R.r===h.r)this.die();
+        for(const e of this.enemies)if(this.active(e)&&e.c===h.c&&e.r===h.r)this.killEnemy(e);
+      }
+    }
+  }
+  die(){if(this.status!=='play')return;this.status='dead';this.R.dead=true;this.emit('die',this.R.c,this.R.r)}
+  touching(){
+    const R=this.R,rx=R.c*T+R.ox,ry=R.r*T+R.oy;
+    for(const e of this.enemies){
+      if(!this.active(e))continue;
+      if(Math.abs(e.c*T+e.ox-rx)<T*.66&&Math.abs(e.r*T+e.oy-ry)<T*.72)return true;
+    }
+    return false;
+  }
+  tick(){
+    if(this.status==='ready'){
+      if(this.input.dirs.length||this.input.dig)this.status='play';else return;
+    }
+    if(this.status!=='play')return;
+    this.t++;
+    this.tickHoles();
+    if(this.status!=='play')return;
+    this.tickRunner();
+    this.collect();
+    for(const e of this.enemies)this.tickEnemy(e);
+    if(this.touching())this.die();
+    if(this.status==='play'&&this.got>=this.total&&this.R.r===0&&this.R.oy<=0){
+      this.status='won';this.emit('clear',this.R.c,this.R.r);
+    }
+  }
+}
+/*CORE:END*/
+
+/* ---------- 音:波形はすべてこの場で合成。BGMも書き下ろし ---------- */
+const Sound=(()=>{
+  let ctx=null,master=null,muted=false,next=0,step=0,playing=false;
+  const N={A2:110,C3:130.81,D3:146.83,E3:164.81,G3:196,A3:220,C4:261.63,D4:293.66,E4:329.63,G4:392,A4:440,C5:523.25,D5:587.33,E5:659.25,G5:783.99,A5:880};
+  const LEAD=['A4',0,'C5','D5','E5',0,'D5','C5','A4',0,'G4',0,'A4',0,0,0,'E5',0,'G5','E5','D5',0,'C5','D5','E5',0,'D5',0,'C5',0,0,0];
+  const BASS=['A2',0,'A3',0,'A2',0,'A3',0,'C3',0,'G3',0,'C3',0,'G3',0,'D3',0,'A3',0,'D3',0,'A3',0,'E3',0,'E3',0,'G3',0,'E3',0];
+  function ensure(){
+    if(ctx)return;
+    const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
+    try{ctx=new AC();master=ctx.createGain();master.gain.value=muted?0:.5;master.connect(ctx.destination)}catch(e){ctx=null}
+  }
+  function tone(f,t,d,type='square',v=.08,slide=0){
+    if(!ctx)return;
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.type=type;o.frequency.setValueAtTime(f,t);
+    if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f+slide),t+d);
+    g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.0008,t+d);
+    o.connect(g);g.connect(master);o.start(t);o.stop(t+d+.02);
+  }
+  function noise(t,d,v=.1){
+    if(!ctx)return;
+    const n=Math.floor(ctx.sampleRate*d),b=ctx.createBuffer(1,n,ctx.sampleRate),a=b.getChannelData(0);
+    for(let i=0;i<n;i++)a[i]=(Math.random()*2-1)*(i%4<2?1:.3);
+    const s=ctx.createBufferSource(),g=ctx.createGain();s.buffer=b;
+    g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);
+    s.connect(g);g.connect(master);s.start(t);
+  }
+  const sfx={
+    dig(t){noise(t,.16,.14);tone(240,t,.14,'square',.05,-150)},
+    gold(t){tone(1046,t,.06);tone(1568,t+.06,.12)},
+    trap(t){tone(520,t,.2,'square',.07,-360)},
+    fill(t){noise(t,.08,.06)},
+    kill(t){tone(180,t,.3,'sawtooth',.07,-130)},
+    die(t){[523,440,349,262,196].forEach((f,i)=>tone(f,t+i*.09,.12))},
+    reveal(t){[440,523,659,880,1046].forEach((f,i)=>tone(f,t+i*.07,.1))},
+    clear(t){[523,659,784,1046,784,1046,1319].forEach((f,i)=>tone(f,t+i*.1,.14))}
+  };
+  return{
+    unlock(){ensure();if(ctx&&ctx.state==='suspended')ctx.resume().catch(()=>{})},
+    play(n){if(ctx&&!muted&&sfx[n])sfx[n](ctx.currentTime+.005)},
+    setMuted(m){muted=m;if(master)master.gain.value=m?0:.5},
+    bgm(on){playing=on;if(on&&ctx){next=ctx.currentTime+.05}},
+    pump(){
+      if(!ctx||!playing||muted)return;
+      const stepLen=.165;
+      if(next<ctx.currentTime)next=ctx.currentTime+.03;
+      while(next<ctx.currentTime+.2){
+        const i=step%32,l=LEAD[i],b=BASS[i];
+        if(l)tone(N[l],next,.14,'square',.022);
+        if(b)tone(N[b],next,.16,'triangle',.09);
+        next+=stepLen;step++;
+      }
+    }
+  };
+})();
+
+/* ---------- 描画 ---------- */
+const WORLDS=[
+  {name:'坑道',bg:'#000000',brick:'#c8642c',hi:'#ee9f5e',lo:'#6e2c14',rock:'#7d7488',rockHi:'#b1a9ba',rockLo:'#403a4a',ladder:'#efe3cc',rope:'#d9b784'},
+  {name:'鍾乳洞',bg:'#020a10',brick:'#2c8d96',hi:'#74d6cc',lo:'#114650',rock:'#6d8399',rockHi:'#a8bccb',rockLo:'#33465a',ladder:'#e0f2e6',rope:'#b4dcc8'},
+  {name:'地底金庫',bg:'#07030c',brick:'#8c49a8',hi:'#cb8ee2',lo:'#42205a',rock:'#8f8460',rockHi:'#c7ba8c',rockLo:'#4d4630',ladder:'#f3e2b8',rope:'#e2c27a'},
+];
+const worldOf=i=>WORLDS[Math.min(2,Math.floor(i/4))];
+const cvs=document.getElementById('field'),g=cvs.getContext('2d');
+g.imageSmoothingEnabled=false;
+function mk(w,h){const c=document.createElement('canvas');c.width=w;c.height=h;return c}
+
+function tileSprites(w){
+  const out={};
+  const brick=mk(16,16),b=brick.getContext('2d');
+  b.fillStyle=w.lo;b.fillRect(0,0,16,16);
+  const course=(y,x0)=>{for(let x=x0;x<16;x+=8){
+    b.fillStyle=w.brick;b.fillRect(Math.max(0,x),y,x<0?7+x:7,7);
+    b.fillStyle=w.hi;b.fillRect(Math.max(0,x),y,x<0?7+x:7,1);
+  }};
+  course(0,0);course(8,-4);
+  out.brick=brick;
+  const rock=mk(16,16),s=rock.getContext('2d');
+  s.fillStyle=w.rock;s.fillRect(0,0,16,16);
+  s.fillStyle=w.rockHi;s.fillRect(0,0,16,1);s.fillRect(0,0,1,16);
+  s.fillStyle=w.rockLo;s.fillRect(0,15,16,1);s.fillRect(15,0,1,16);
+  s.fillRect(3,3,2,2);s.fillRect(11,3,2,2);s.fillRect(3,11,2,2);s.fillRect(11,11,2,2);
+  out.rock=rock;
+  const lad=mk(16,16),l=lad.getContext('2d');
+  l.fillStyle=w.ladder;l.fillRect(2,0,2,16);l.fillRect(12,0,2,16);
+  for(const y of[1,6,11])l.fillRect(4,y,8,2);
+  out.ladder=lad;
+  const bar=mk(16,16),r=bar.getContext('2d');
+  r.fillStyle=w.rope;r.fillRect(0,3,16,2);
+  r.fillStyle=w.brick;for(let x=1;x<16;x+=4)r.fillRect(x,3,1,2);
+  out.bar=bar;
+  return out;
+}
+function goldSprite(){
+  const c=mk(16,16),x=c.getContext('2d');
+  const r=(k,a,b,w,h)=>{x.fillStyle=k;x.fillRect(a,b,w,h)};
+  r('#a8741a',3,12,10,3);r('#f6c945',4,11,8,3);r('#ffe88a',5,11,5,1);
+  r('#a8741a',5,8,6,3);r('#f6c945',6,7,4,3);r('#ffe88a',6,7,3,1);
+  return c;
+}
+const GOLD=goldSprite();
+const SPR={};
+const HEADS={
+miner:[
+'....yyyyy...',
+'...yyyyyyyll',
+'..yyyyyyyyll',
+'..yyyyyyyyy.',
+'.yyyyyyyyyyy',
+'...sssesss..',
+'...sssesss..',
+'....ssss....'],
+mujina:[
+'..gg....gg..',
+'.gmmg..gmmg.',
+'.gggggggggg.',
+'.gmmmggmmmg.',
+'.gmwmggmwmg.',
+'.ggggnngggg.',
+'..gwwwwwwg..',
+'...gggggg...']
+};
+const INK={y:'#f6c945',l:'#fff7c2',s:'#f0b486',e:'#2a1a18',g:'#d6cdc9',m:'#3a2c3c',w:'#ffffff',n:'#e8708c'};
+function drawHead(x,kind,ox,oy){
+  HEADS[kind].forEach((row,j)=>{for(let i=0;i<row.length;i++){
+    const k=row[i];if(k==='.')continue;x.fillStyle=INK[k];x.fillRect(ox+i,oy+j,1,1);
+  }});
+}
+const LOOK={
+  miner:{body:'#3a86e8',leg:'#1f4fa8',arm:'#3a86e8',hand:'#f0b486',foot:'#7a4322'},
+  mujina:{body:'#a59a96',leg:'#6d625f',arm:'#6d625f',hand:'#3a2c3c',foot:'#3a2c3c'}
+};
+function poseRects(p,f,L){
+  const r=[[L.body,4,8,6,4]];
+  const add=(...a)=>r.push(a);
+  switch(p){
+    case'run':
+      if(f===0){add(L.arm,10,9,2,1,);add(L.hand,12,9,1,1);add(L.arm,2,9,2,1);add(L.leg,3,12,2,2);add(L.leg,9,12,2,2);add(L.foot,2,14,3,2);add(L.foot,9,14,3,2)}
+      else if(f===1){add(L.arm,6,9,3,2);add(L.leg,6,12,2,3);add(L.foot,6,15,3,1)}
+      else{add(L.arm,3,9,1,3);add(L.arm,10,9,1,3);add(L.leg,4,12,2,3);add(L.leg,8,12,2,2);add(L.foot,4,15,3,1);add(L.foot,8,14,3,1)}
+      break;
+    case'climb':
+      if(f%2===0){add(L.arm,3,3,1,6);add(L.hand,3,2,1,1);add(L.arm,10,8,1,4);add(L.leg,4,12,2,2);add(L.leg,8,12,2,4);add(L.foot,4,14,2,1);add(L.foot,8,15,2,1)}
+      else{add(L.arm,10,3,1,6);add(L.hand,10,2,1,1);add(L.arm,3,8,1,4);add(L.leg,4,12,2,4);add(L.leg,8,12,2,2);add(L.foot,4,15,2,1);add(L.foot,8,14,2,1)}
+      break;
+    case'hang':
+      add(L.arm,3,2,1,7);add(L.arm,10,2,1,7);add(L.hand,3,3,1,2);add(L.hand,10,3,1,2);
+      if(f%2===0){add(L.leg,4,12,2,3);add(L.leg,8,12,2,2);add(L.foot,3,15,3,1);add(L.foot,8,14,3,1)}
+      else{add(L.leg,4,12,2,2);add(L.leg,8,12,2,3);add(L.foot,3,14,3,1);add(L.foot,8,15,3,1)}
+      break;
+    case'fall':
+      add(L.arm,2,5,2,4);add(L.arm,10,5,2,4);add(L.leg,3,12,2,3);add(L.leg,9,12,2,3);add(L.foot,2,15,3,1);add(L.foot,9,15,3,1);
+      break;
+    case'dig':
+      add(L.arm,9,9,3,2);add('#b58a55',11,10,4,1);add('#dfe3ea',14,8,1,6);add(L.leg,3,12,2,3);add(L.leg,8,12,2,3);add(L.foot,3,15,3,1);add(L.foot,8,15,3,1);
+      break;
+    case'trap':
+      add(L.arm,2,6,2,4);add(L.arm,10,6,2,4);add(L.hand,2,5,2,1);add(L.hand,10,5,2,1);add(L.leg,4,12,2,3);add(L.leg,8,12,2,3);add(L.foot,4,15,2,1);add(L.foot,8,15,2,1);
+      break;
+    default:
+      add(L.arm,3,8,1,3);add(L.arm,10,8,1,3);add(L.hand,3,11,1,1);add(L.hand,10,11,1,1);add(L.leg,4,12,2,3);add(L.leg,8,12,2,3);add(L.foot,4,15,3,1);add(L.foot,8,15,3,1);
+  }
+  return r;
+}
+function sprite(kind,pose,f,carry){
+  const key=kind+pose+f+(carry?1:0);
+  if(SPR[key])return SPR[key];
+  const c=mk(16,16),x=c.getContext('2d'),L=LOOK[kind];
+  if(kind==='mujina'&&pose!=='climb'){ // 縞のしっぽ
+    x.fillStyle='#a59a96';x.fillRect(0,9,4,2);x.fillStyle='#3a2c3c';x.fillRect(1,9,1,2);
+  }
+  for(const[k,a,b,w,h]of poseRects(pose,f,L)){x.fillStyle=k;x.fillRect(a,b,w,h)}
+  drawHead(x,kind,kind==='mujina'?2:2,0);
+  if(kind==='miner'){x.fillStyle='#f6c945';x.fillRect(5,10,4,1)}
+  if(carry){x.fillStyle='#f6c945';x.fillRect(5,8,4,3);x.fillStyle='#ffe88a';x.fillRect(5,8,3,1)}
+  return SPR[key]=c;
+}
+const frameOf=(e,n)=>Math.floor(e.anim/42)%n;
+function drawActor(kind,e,dy=0,jx=0){
+  const pose=e.pose||'stand';
+  const n=pose==='run'?3:2;
+  const f=(pose==='stand'||pose==='fall'||pose==='dig'||pose==='trap')?0:frameOf(e,n);
+  const s=sprite(kind,pose,f,!!e.carry);
+  const px=Math.round((e.c*T+e.ox)/T*16)+jx,py=Math.round((e.r*T+e.oy)/T*16)+dy;
+  g.save();
+  if((e.face||1)<0){g.translate(px+16,py);g.scale(-1,1);g.drawImage(s,0,0)}
+  else g.drawImage(s,px,py);
+  g.restore();
+}
+
+let TILES=null,TILEW=null,sparks=[],frame=0,flash=0;
+function setWorld(w){if(TILEW!==w){TILEW=w;TILES=tileSprites(w)}}
+function render(run,idx){
+  const w=worldOf(idx);setWorld(w);frame++;
+  g.fillStyle=w.bg;g.fillRect(0,0,448,256);
+  for(let r=0;r<H;r++)for(let c=0;c<W;c++){
+    const t=run.map[r][c],x=c*16,y=r*16;
+    if(t===SOLID)g.drawImage(TILES.rock,x,y);
+    else if(t===BRICK)g.drawImage(TILES.brick,x,y);
+    else if(t===LADDER)g.drawImage(TILES.ladder,x,y);
+    else if(t===BAR)g.drawImage(TILES.bar,x,y);
+    if(run.gold[r][c]){
+      g.drawImage(GOLD,x,y);
+      const tw=(frame+c*7+r*13)%120;
+      if(tw<8){g.fillStyle='#fff';g.fillRect(x+9,y+7,1,1);if(tw>2&&tw<6){g.fillRect(x+8,y+7,3,1);g.fillRect(x+9,y+6,1,3)}}
+    }
+  }
+  if(run.opened&&run.revealT>0){
+    run.revealT--;
+    if(Math.floor(run.revealT/5)%2===0){g.fillStyle='#f6c945';for(const[c,r]of run.hidden)g.fillRect(c*16+1,r*16,14,16)}
+  }
+  for(const h of run.holes){
+    const x=h.c*16,y=h.r*16;
+    let k=0;
+    if(h.phase==='dig')k=1-h.t/TUNE.digTicks;
+    else if(h.phase==='open')k=1;
+    else k=h.t/TUNE.holeFill;
+    g.fillStyle=w.bg;
+    const cut=Math.ceil(16*k);
+    g.fillRect(x,y,16,cut);
+    if(h.phase==='fill'){
+      g.drawImage(TILES.brick,0,cut,16,16-cut,x,y+cut,16,16-cut);
+    }
+    if(h.phase==='open'&&h.t<70&&h.t%20<10){g.fillStyle=w.hi;g.fillRect(x+1,y+14,14,1)}
+  }
+  for(const e of run.enemies){
+    if(e.state==='dead')continue;
+    if(e.state==='spawn'&&Math.floor(e.t/4)%2)continue;
+    const shake=e.state==='trap'&&e.t<TUNE.shakeTicks?(frame%4<2?1:-1):0;
+    drawActor('mujina',e,0,shake);
+  }
+  const R=run.R;
+  if(!R.dead||Math.floor(frame/4)%2)drawActor('miner',R);
+  for(let r=0;r<H;r++)for(let c=0;c<W;c++){
+    if(run.map[r][c]===TRAP){
+      g.globalAlpha=run.seen[r][c]?.35:1;g.drawImage(TILES.brick,c*16,r*16);g.globalAlpha=1;
+    }
+  }
+  for(let i=sparks.length-1;i>=0;i--){
+    const p=sparks[i];p.x+=p.vx;p.y+=p.vy;p.vy+=.12;
+    g.fillStyle=p.k;g.fillRect(p.x|0,p.y|0,p.s,p.s);
+    if(--p.l<=0)sparks.splice(i,1);
+  }
+}
+function burst(c,r,kinds,n){
+  for(let i=0;i<n;i++)sparks.push({x:c*16+8,y:r*16+6,vx:(Math.random()-.5)*2.4,vy:-Math.random()*2.2,l:14+Math.random()*12,s:Math.random()<.5?1:2,k:kinds[i%kinds.length]});
+}
+
+/* ---------- 進行 ---------- */
+const $=id=>document.getElementById(id);
+const Store={
+  key:'pitrunner-v1',
+  load(){try{return JSON.parse(localStorage.getItem(this.key))||{}}catch(e){return{}}},
+  save(d){try{localStorage.setItem(this.key,JSON.stringify(d))}catch(e){}}
+};
+const saved=Store.load();
+const S={mode:'title',idx:0,lives:5,score:0,hi:saved.hi||0,cleared:saved.cleared||0,muted:!!saved.muted,pick:Math.min(saved.pick||0,STAGES.length-1),wait:0,run:null};
+const PLAYABLE=()=>S.mode==='play';
+function persist(){Store.save({hi:S.hi,cleared:S.cleared,muted:S.muted,pick:S.pick})}
+function pad2(n){return String(n).padStart(2,'0')}
+function hud(){
+  $('hStage').textContent=pad2(S.idx+1);
+  $('stageName').textContent=STAGES[S.idx].name;
+  const run=S.run;
+  $('hGold').textContent=run?`${run.got}/${run.total}`:'0/0';
+  $('hScore').textContent=String(S.score);
+  $('hLives').textContent=String(S.lives);
+  $('btnSound').textContent=S.muted?'音 切':'音 入';
+}
+function banner(text){
+  const b=$('banner');
+  if(text){$('bannerText').textContent=text;b.hidden=false}else b.hidden=true;
+}
+function loadStage(i){
+  S.idx=i;S.run=new Run(STAGES[i]);S.run.revealT=0;sparks=[];
+  S.mode='play';S.wait=0;clearInput();
+  const hint=i===0?'金塊を全部とるとハシゴが出る':i===1?'床を掘ると下へ抜けられる':'動くと始まる';
+  banner(`「${STAGES[i].name}」${hint}`);
+  hud();
+}
+function startFrom(i){
+  S.lives=5;S.score=0;Sound.unlock();Sound.bgm(true);hideOverlay();loadStage(i);
+}
+function addScore(n){S.score+=n;if(S.score>S.hi)S.hi=S.score}
+function handleEvents(run){
+  for(const e of run.ev){
+    switch(e.type){
+      case'gold':addScore(250);burst(e.c,e.r,['#f6c945','#fff7c2'],8);Sound.play('gold');break;
+      case'dig':burst(e.c,e.r,[worldOf(S.idx).brick,worldOf(S.idx).hi],8);Sound.play('dig');break;
+      case'trap':addScore(75);Sound.play('trap');break;
+      case'kill':addScore(75);burst(e.c,e.r,['#d6cdc9','#a59a96'],10);Sound.play('kill');break;
+      case'fill':Sound.play('fill');break;
+      case'reveal':run.revealT=60;Sound.play('reveal');banner('ハシゴが出た。いちばん上まで登れ');S.bannerT=120;break;
+      case'die':S.lives--;Sound.play('die');S.mode='dying';S.wait=80;break;
+      case'clear':addScore(1500);S.lives=Math.min(S.lives+1,9);S.cleared=Math.max(S.cleared,S.idx+1);persist();Sound.play('clear');S.mode='cleared';S.wait=120;banner(`ステージ ${S.idx+1} クリア　金塊 +1500点　残り +1`);break;
+    }
+  }
+  run.ev.length=0;
+}
+function update(){
+  if(S.mode==='play'){
+    const run=S.run,was=run.status;
+    run.tick();
+    if(was==='ready'&&run.status==='play')banner('');
+    handleEvents(run);
+    if(S.bannerT>0&&--S.bannerT===0)banner('');
+    hud();
+  }else if(S.mode==='dying'){
+    if(--S.wait<=0){
+      if(S.lives<=0){gameOver()}else loadStage(S.idx);
+    }
+  }else if(S.mode==='cleared'){
+    if(--S.wait<=0){
+      if(S.idx+1<STAGES.length)loadStage(S.idx+1);else ending();
+    }
+  }
+}
+
+/* ---------- 画面(ダイアログ) ---------- */
+function showPanel(html){
+  $('panel').innerHTML=html;$('overlay').hidden=false;
+  const f=$('panel').querySelector('.primary');if(f)f.focus();
+}
+function hideOverlay(){$('overlay').hidden=true}
+const TOUCH=matchMedia('(hover:none) and (pointer:coarse)').matches;
+function title(){
+  S.mode='title';Sound.bgm(false);banner('');
+  S.idx=S.pick;S.run=new Run(STAGES[S.pick]);S.run.revealT=0;S.lives=5;S.score=0;hud();
+  showPanel(`
+    <canvas id="logoArt" width="200" height="32" aria-hidden="true"></canvas>
+    <h1><em>ピット</em>ランナー</h1>
+    <p>掘った穴に、地底の番人ムジナを落とす。金塊を全部集めて、最後に現れるハシゴで地上へ。</p>
+    <ul class="rules">
+      ${TOUCH?'<li>左の十字で移動、右のボタンで<kbd>左下・右下</kbd>を掘る</li>'
+             :'<li><kbd>矢印キー</kbd>で移動、<kbd>Z</kbd>で左下、<kbd>X</kbd>で右下を掘る</li>'}
+      <li>穴はしばらくすると埋まる。埋まる時に中にいると、自分もやられる</li>
+      <li>穴に落ちたムジナの頭は踏んで渡れる</li>
+    </ul>
+    <div class="row">
+      <button class="btn primary" id="goStart" type="button">はじめる</button>
+      <div id="picker">
+        <button id="pickPrev" type="button" aria-label="前のステージ">◀</button>
+        <div id="pickLabel"></div>
+        <button id="pickNext" type="button" aria-label="次のステージ">▶</button>
+      </div>
+    </div>
+    <div class="scores"><div>最高得点<b>${S.hi}</b></div><div>クリア済み<b>${S.cleared}/${STAGES.length}</b></div></div>
+    <a class="back" href="/">← PLAY にもどる</a>`);
+  drawLogo();pickLabel();
+  $('goStart').onclick=()=>startFrom(S.pick);
+  $('pickPrev').onclick=()=>movePick(-1);
+  $('pickNext').onclick=()=>movePick(1);
+}
+function pickLabel(){
+  const el=$('pickLabel');if(!el)return;
+  el.innerHTML=`<b>STAGE ${pad2(S.pick+1)}</b>${STAGES[S.pick].name}`;
+}
+function movePick(d){
+  S.pick=(S.pick+d+STAGES.length)%STAGES.length;persist();
+  S.idx=S.pick;S.run=new Run(STAGES[S.pick]);S.run.revealT=0;hud();pickLabel();
+}
+function drawLogo(){
+  const c=$('logoArt');if(!c)return;
+  const x=c.getContext('2d'),w=WORLDS[0],t=tileSprites(w);x.imageSmoothingEnabled=false;
+  x.clearRect(0,0,200,32);
+  for(let i=0;i<12;i++){
+    if(i===7)continue;
+    x.drawImage(t.brick,i*16+4,16);
+  }
+  x.fillStyle='#000';x.fillRect(7*16+4,16,16,16);
+  x.drawImage(sprite('miner','dig',0,false),3*16+12,0);
+  x.drawImage(sprite('mujina','trap',0,false),7*16+4,16);
+  x.drawImage(GOLD,10*16,0);
+}
+function pause(){
+  if(S.mode!=='play')return;
+  S.mode='pause';clearInput();Sound.bgm(false);
+  showPanel(`<h2>一時停止</h2>
+    <p>ステージ ${S.idx+1}「${STAGES[S.idx].name}」</p>
+    <div class="row">
+      <button class="btn primary" id="goResume" type="button">続ける</button>
+      <button class="btn" id="goRetry" type="button">やり直す(残り-1)</button>
+      <button class="btn" id="goTitle" type="button">タイトルへ</button>
+    </div>`);
+  $('goResume').onclick=resume;
+  $('goRetry').onclick=()=>{hideOverlay();Sound.bgm(true);S.lives--;if(S.lives<=0)gameOver();else loadStage(S.idx)};
+  $('goTitle').onclick=()=>{hideOverlay();title()};
+}
+function resume(){hideOverlay();S.mode='play';Sound.bgm(true)}
+function gameOver(){
+  S.mode='over';Sound.bgm(false);persist();banner('');
+  showPanel(`<h2>ゲームオーバー</h2>
+    <p>ステージ ${S.idx+1}「${STAGES[S.idx].name}」で力尽きた。</p>
+    <div class="scores"><div>得点<b>${S.score}</b></div><div>最高得点<b>${S.hi}</b></div></div>
+    <div class="row">
+      <button class="btn primary" id="goAgain" type="button">このステージからやり直す</button>
+      <button class="btn" id="goTitle" type="button">タイトルへ</button>
+    </div>`);
+  $('goAgain').onclick=()=>startFrom(S.idx);
+  $('goTitle').onclick=()=>{hideOverlay();title()};
+}
+function ending(){
+  S.mode='ending';Sound.bgm(false);persist();banner('');
+  showPanel(`<h2>全ステージ制覇</h2>
+    <p>金塊はすべて地上へ運び出された。金庫の底では、穴から這い出たムジナたちが、また次の金塊を守り始めている。</p>
+    <div class="scores"><div>得点<b>${S.score}</b></div><div>最高得点<b>${S.hi}</b></div></div>
+    <div class="row"><button class="btn primary" id="goTitle" type="button">タイトルへ</button></div>`);
+  $('goTitle').onclick=()=>{hideOverlay();title()};
+}
+
+/* ---------- 入力 ---------- */
+const held=[];
+function press(k){const i=held.indexOf(k);if(i>=0)held.splice(i,1);held.push(k);if(S.run)S.run.input.dirs=held}
+function release(k){const i=held.indexOf(k);if(i>=0)held.splice(i,1)}
+function dig(d){if(S.run&&PLAYABLE()){S.run.input.dig=d;S.run.input.digAge=0}}
+function clearInput(){held.length=0;if(S.run){S.run.input.dirs=held;S.run.input.dig=0}syncPad(null)}
+const KEYDIR={ArrowLeft:'L',ArrowRight:'R',ArrowUp:'U',ArrowDown:'D',KeyA:'L',KeyD:'R',KeyW:'U',KeyS:'D'};
+addEventListener('keydown',e=>{
+  if(S.mode==='title'&&(e.code==='ArrowLeft'||e.code==='ArrowRight')){e.preventDefault();movePick(e.code==='ArrowLeft'?-1:1);return}
+  if(!$('overlay').hidden){
+    if(S.mode==='pause'&&(e.code==='KeyP'||e.code==='Escape')){e.preventDefault();resume()}
+    return;
+  }
+  const k=KEYDIR[e.code];
+  if(k){e.preventDefault();if(!e.repeat)press(k);return}
+  if(e.repeat)return;
+  if(e.code==='KeyZ'||e.code==='KeyQ'||e.code==='KeyJ'){e.preventDefault();dig(-1)}
+  else if(e.code==='KeyX'||e.code==='KeyE'||e.code==='KeyK'){e.preventDefault();dig(1)}
+  else if(e.code==='KeyP'||e.code==='Escape'||e.code==='Enter'){e.preventDefault();pause()}
+  else if(e.code==='KeyM')toggleSound();
+  else if(e.code==='Space')e.preventDefault();
+});
+addEventListener('keyup',e=>{const k=KEYDIR[e.code];if(k)release(k)});
+addEventListener('blur',()=>{clearInput()});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)pause()});
+function toggleSound(){S.muted=!S.muted;Sound.setMuted(S.muted);persist();hud()}
+$('btnSound').onclick=()=>{Sound.unlock();toggleSound();$('btnSound').blur()};
+$('btnPause').onclick=()=>{$('btnPause').blur();if(S.mode==='play')pause()};
+
+const padEl=$('padMove');let padDir=null;
+function syncPad(d){
+  for(const[k,id]of[['U','pU'],['D','pD'],['L','pL'],['R','pR']])$(id).classList.toggle('on',k===d);
+}
+function padSet(d){
+  if(d===padDir)return;
+  if(padDir)release(padDir);
+  padDir=d;if(d)press(d);syncPad(d);
+}
+function padPoint(e){
+  const r=padEl.getBoundingClientRect(),x=e.clientX-r.left-r.width/2,y=e.clientY-r.top-r.height/2;
+  if(Math.hypot(x,y)<10)return padDir;
+  return Math.abs(x)>Math.abs(y)?(x<0?'L':'R'):(y<0?'U':'D');
+}
+padEl.addEventListener('pointerdown',e=>{e.preventDefault();Sound.unlock();try{padEl.setPointerCapture(e.pointerId)}catch(_){}padSet(padPoint(e))});
+padEl.addEventListener('pointermove',e=>{if(e.buttons||e.pressure>0)padSet(padPoint(e))});
+for(const ev of['pointerup','pointercancel','lostpointercapture'])padEl.addEventListener(ev,()=>padSet(null));
+for(const[id,d]of[['digL',-1],['digR',1]]){
+  const b=$(id);
+  b.addEventListener('pointerdown',e=>{e.preventDefault();Sound.unlock();b.classList.add('on');dig(d)});
+  for(const ev of['pointerup','pointercancel','pointerleave'])b.addEventListener(ev,()=>b.classList.remove('on'));
+  b.addEventListener('contextmenu',e=>e.preventDefault());
+}
+
+/* ---------- ループ ---------- */
+let last=0,acc=0;
+function loop(ts){
+  if(!last)last=ts;
+  acc+=Math.min(100,ts-last);last=ts;
+  const dt=1000/60;
+  while(acc>=dt){update();acc-=dt}
+  if(S.run)render(S.run,S.idx);
+  Sound.pump();
+  requestAnimationFrame(loop);
+}
+function start(data){
+  Sound.setMuted(S.muted);
+  if(data&&typeof data.idx==='number'&&data.mode==='play'){
+    S.lives=data.lives;S.score=data.score;loadStage(data.idx);
+  }else title();
+  requestAnimationFrame(loop);
+}
+start({});
+</script>
+
+</body></html>
