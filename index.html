@@ -64,6 +64,13 @@
     background: var(--yellow); color: var(--bg);
     font-size: 12px; font-style: normal; letter-spacing: .15em;
   }
+  .has-pv { box-shadow: 6px 6px 0 #0a0e1c; }
+  .has-pv a.game { box-shadow: none; border-bottom: 0; }
+  .has-pv a.game:hover, .has-pv a.game:focus-visible, .has-pv a.game:active { transform: none; box-shadow: none; }
+  .pv {
+    display: block; width: 100%; aspect-ratio: 16 / 9; background: #000;
+    border: 3px solid var(--ink); border-top: 2px solid var(--line);
+  }
   .soon {
     display: inline-block; margin-top: 6px; padding: 0 8px;
     background: var(--bg); border: 1px solid var(--green); color: var(--green);
@@ -90,7 +97,7 @@
         </div>
       </a>
     </li>
-    <li>
+    <li class="has-pv">
       <a class="game" href="/tashigurui/">
         <div class="icon" aria-hidden="true">➕</div>
         <div>
@@ -99,8 +106,9 @@
           <em class="ready">▶ あそぶ</em>
         </div>
       </a>
+      <video class="pv" src="/tashigurui/pv.mp4" poster="/tashigurui/pv.jpg" controls muted playsinline preload="none" aria-label="足し狂い の紹介動画"></video>
     </li>
-    <li>
+    <li class="has-pv">
       <a class="game" href="/pitrunner/">
         <div class="icon" aria-hidden="true">⛏️</div>
         <div>
@@ -109,6 +117,7 @@
           <em class="ready">▶ あそぶ</em>
         </div>
       </a>
+      <video class="pv" src="/pitrunner/pv.mp4" poster="/pitrunner/pv.jpg" controls muted playsinline preload="none" aria-label="ピットランナー の紹介動画"></video>
     </li>
   </ul>
 
